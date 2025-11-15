@@ -1,0 +1,18 @@
+image:
+  tag: v0.1.0
+
+config: |
+  spring:
+    datasource:
+      driver-class-name: org.postgresql.Driver
+      url: jdbc:postgresql://story-database:5432/story
+
+    jpa:
+      hibernate:
+        ddl-auto: update
+      properties:
+        hibernate:
+          show_sql: true
+          format_sql: true
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+      open-in-view: false
