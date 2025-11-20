@@ -23,6 +23,8 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+  tracing:
+    enabled: false
 
 logging:
   level:

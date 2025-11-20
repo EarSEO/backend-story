@@ -17,7 +17,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
 
+otel:
+  propagators:
+    - tracecontext
+    - b3
+    - baggage
 management:
+  otlp:
+    tracing:
+      endpoint: http://${NODE_IP:localhost}:4317
+      transport: grpc
   endpoints:
     web:
       exposure:
@@ -25,6 +34,10 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+    enabled: true
 
 logging:
   level:

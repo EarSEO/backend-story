@@ -36,6 +36,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.14'
+
+	implementation 'io.micrometer:micrometer-tracing-bridge-otel' // 트레이싱
+	implementation 'io.opentelemetry:opentelemetry-exporter-otlp' // otel exporter
+	implementation 'net.ttddyy.observation:datasource-micrometer-spring-boot:1.1.2' // JDBC 트레이싱
 }
 
 tasks.named('test') {
