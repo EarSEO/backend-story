@@ -4,14 +4,8 @@ import ch.hsr.geohash.GeoHash;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
-import com.earseo.story.entity.Story;
-import com.earseo.story.entity.StoryAuthor;
-import com.earseo.story.entity.StoryImage;
-import com.earseo.story.entity.StorySpot;
-import com.earseo.story.repository.StoryAuthorRepository;
-import com.earseo.story.repository.StoryImageRepository;
-import com.earseo.story.repository.StoryRepository;
-import com.earseo.story.repository.StorySpotRepository;
+import com.earseo.story.entity.*;
+import com.earseo.story.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +38,8 @@ public class StoryService {
     private final StoryRepository storyRepository;
     private final S3Service s3Service;
     private final StoryImageRepository storyImageRepository;
+    private final StoryTitleRepository storyTitleRepository;
+    private final SpotTitleAggregateRepository spotTitleAggregateRepository;
 
     @Transactional
     public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
@@ -78,16 +74,27 @@ public class StoryService {
                         .build()
                 )
             );
+        // 이야기 타이틀 조회
+        StoryTitle storyTitle = storyTitleRepository.findByTitle(body.title())
+            .orElseGet(() ->
+                storyTitleRepository.save(
+                    StoryTitle.builder()
+                        .title(body.title())
+                        .build()
+                )
+            );
         // 이야기 저장
         Story story = storyRepository.save(Story.builder()
             .storySpot(geohashedSpot)
             .storyAuthor(storyAuthor)
             .point(centerPoint)
-            .title(body.title())
+            .storyTitle(storyTitle)
             .content(body.content())
             .locale(body.locale())
             .storyConcept(body.storyConcept())
             .build());
+        // 제목 집계 테이블 최신화
+        spotTitleAggregateRepository.incrementOrCreate(geohashedSpot.getId(), storyTitle.getId());
         // 파일 저장
         if (images != null && !images.isEmpty()) {
             List<StoryImage> storyImages = getImageList(images, spotGeoHash, story);

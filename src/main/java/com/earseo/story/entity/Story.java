@@ -31,7 +31,9 @@ public class Story {
     private StoryAuthor storyAuthor;
     @Column(columnDefinition = "geometry(Point, 4326)")
     private Point point;
-    private String title;
+    @JoinColumn(name = "story_title_id", nullable = false)
+    @ManyToOne
+    private StoryTitle storyTitle;
     @Column(columnDefinition = "text")
     private String content;
     @Enumerated(EnumType.STRING)

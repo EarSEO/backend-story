@@ -4,10 +4,7 @@ import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
 import com.earseo.story.entity.*;
-import com.earseo.story.repository.StoryAuthorRepository;
-import com.earseo.story.repository.StoryImageRepository;
-import com.earseo.story.repository.StoryRepository;
-import com.earseo.story.repository.StorySpotRepository;
+import com.earseo.story.repository.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +52,9 @@ class StoryCreateTest {
     private StoryImageRepository storyImageRepository;
 
     @Mock
+    private StoryTitleRepository storyTitleRepository;
+
+    @Mock
     private S3Service s3Service;
 
     @Test
@@ -68,7 +68,8 @@ class StoryCreateTest {
 
         StoryAuthor savedAuthor = createStoryAuthor(1L, "이어동", now);
         StorySpot savedSpot = createStorySpot(1L, "wydm6djcm");
-        Story savedStory = createStory(1L, savedAuthor, savedSpot, now);
+        StoryTitle storyTitle = createStoryTitle(1L, "골목길 맛집");
+        Story savedStory = createStory(1L, savedAuthor, savedSpot, storyTitle, now);
 
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.empty());
         given(storyAuthorRepository.save(any(StoryAuthor.class))).willReturn(savedAuthor);
@@ -104,7 +105,8 @@ class StoryCreateTest {
 
         StoryAuthor existingAuthor = createStoryAuthor(1L, "이어동", oldTime);
         StorySpot existingSpot = createStorySpot(1L, "wydm6djcm");
-        Story savedStory = createStory(1L, existingAuthor, existingSpot, now);
+        StoryTitle storyTitle = createStoryTitle(1L, "골목길 맛집");
+        Story savedStory = createStory(1L, existingAuthor, existingSpot, storyTitle, now);
 
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(existingAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(existingSpot));
@@ -150,7 +152,8 @@ class StoryCreateTest {
 
         StoryAuthor existingAuthor = createStoryAuthor(1L, "이어동", oldTime);
         StorySpot existingSpot = createStorySpot(1L, "wydm6djcm");
-        Story savedStory = createStory(1L, existingAuthor, existingSpot, newTime);
+        StoryTitle storyTitle = createStoryTitle(1L, "골목길 맛집");
+        Story savedStory = createStory(1L, existingAuthor, existingSpot, storyTitle, newTime);
 
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(existingAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(existingSpot));
@@ -186,7 +189,8 @@ class StoryCreateTest {
 
         StoryAuthor savedAuthor = createStoryAuthor(1L, "이어동", now);
         StorySpot savedSpot = createStorySpot(1L, "wydm6djcm");
-        Story savedStory = createStory(1L, savedAuthor, savedSpot, now);
+        StoryTitle storyTitle = createStoryTitle(1L, "골목길 맛집");
+        Story savedStory = createStory(1L, savedAuthor, savedSpot, storyTitle, now);
 
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(savedAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(savedSpot));
@@ -241,7 +245,8 @@ class StoryCreateTest {
 
         StoryAuthor savedAuthor = createStoryAuthor(1L, "이어동", now);
         StorySpot savedSpot = createStorySpot(1L, "wydm6djcm");
-        Story savedStory = createStory(1L, savedAuthor, savedSpot, now);
+        StoryTitle storyTitle = createStoryTitle(1L, "골목길 맛집");
+        Story savedStory = createStory(1L, savedAuthor, savedSpot, storyTitle, now);
 
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(savedAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(savedSpot));
@@ -275,6 +280,10 @@ class StoryCreateTest {
         );
     }
 
+    private StoryTitle createStoryTitle(Long id, String title) {
+        return new StoryTitle(id, title);
+    }
+
     private StoryAuthor createStoryAuthor(Long id, String nickname, LocalDateTime updatedAt) {
         return StoryAuthor.builder()
             .id(id)
@@ -296,7 +305,7 @@ class StoryCreateTest {
         return spot;
     }
 
-    private Story createStory(Long id, StoryAuthor author, StorySpot spot, LocalDateTime createdAt) {
+    private Story createStory(Long id, StoryAuthor author, StorySpot spot, StoryTitle storyTitle, LocalDateTime createdAt) {
         Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(126.9780, 37.5665));
         point.setSRID(4326);
 
@@ -304,7 +313,7 @@ class StoryCreateTest {
             .storyAuthor(author)
             .storySpot(spot)
             .point(point)
-            .title("골목길 맛집")
+            .storyTitle(storyTitle)
             .content("경복궁 근처 맛있는 카페! 강추..!")
             .locale(Locale.KO)
             .storyConcept(StoryConcept.TIP)
