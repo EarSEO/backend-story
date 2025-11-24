@@ -25,4 +25,19 @@ public interface StorySpotRepository extends JpaRepository<StorySpot, Long> {
         @Param("maxLongitude") Double maxLongitude,
         @Param("maxLatitude") Double maxLatitude
     );
+
+    @Query(value = """
+        SELECT s.story_spot_id, s.center, s.geohash, s.created_at
+        FROM story_spot s
+        WHERE ST_DWithin(
+            s.center::geography,
+            ST_SetSRID(ST_MakePoint(:latitude, :longitude), 4326)::geography,
+            :meters
+        )
+        """, nativeQuery = true)
+    List<StorySpot> findByRadius(
+        @Param("longitude") Double longitude,
+        @Param("latitude") Double latitude,
+        @Param("meters") Double meters
+    );
 }

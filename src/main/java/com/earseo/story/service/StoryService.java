@@ -4,7 +4,10 @@ import ch.hsr.geohash.GeoHash;
 import ch.hsr.geohash.WGS84Point;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
-import com.earseo.story.dto.response.*;
+import com.earseo.story.dto.response.CreateResponse;
+import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
+import com.earseo.story.dto.response.MapSpotInfoList;
+import com.earseo.story.dto.response.SpotTitleListResponse;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -195,15 +198,11 @@ public class StoryService {
         List<StorySpot> spots = storySpotRepository.findByBoundingBox(
             minLongitude, minLatitude, maxLongitude, maxLatitude
         );
+        return MapSpotInfoList.toDto(spots);
+    }
 
-        List<SpotInfoResponse> responses = spots.stream()
-            .map(spot -> new SpotInfoResponse(
-                spot.getCenter().getX(),
-                spot.getCenter().getY(),
-                spot.getId()
-            ))
-            .toList();
-
-        return new MapSpotInfoList(responses);
+    public MapSpotInfoList getCircleMapInfo(Double meters, Double longitude, Double latitude) {
+        List<StorySpot> spots = storySpotRepository.findByRadius(longitude, latitude, meters);
+        return MapSpotInfoList.toDto(spots);
     }
 }

@@ -223,4 +223,101 @@ public class StoryController {
             storyService.getRectangleMapInfoList(minLongitude, minLatitude, maxLongitude, maxLatitude)
         ));
     }
+
+    @Operation(
+        summary = "특정 지점 반경 내 이야기 스팟 조회",
+        description = """
+            특정 좌표를 중심으로 지정한 반경(미터) 내의 이야기 스팟 목록을 조회합니다.
+            - 중심 좌표와 반경을 입력받습니다.
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = @Content(schema = @Schema(implementation = MapSpotInfoList.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "잘못된 요청",
+            content = @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                examples = {
+                    @ExampleObject(
+                        name = "반경 범위 오류",
+                        value = """
+                            {
+                                "status": "ARGUMENT_ERROR",
+                                "message": "반경은 1 이상이어야 합니다",
+                                "data": null
+                            }
+                            """
+                    ),
+                    @ExampleObject(
+                        name = "경도 범위 초과",
+                        value = """
+                            {
+                                "status": "ARGUMENT_ERROR",
+                                "message": "경도는 124 이상이어야 합니다",
+                                "data": null
+                            }
+                            """
+                    ),
+                    @ExampleObject(
+                        name = "최대 반경 초과",
+                        value = """
+                            {
+                                "status": "ARGUMENT_ERROR",
+                                "message": "반경은 30000 이하여야 합니다",
+                                "data": null
+                            }
+                            """
+                    )
+                }
+            )
+        )
+    })
+    @GetMapping("/spot/map/circle")
+    public ResponseEntity<BaseResponse<MapSpotInfoList>> getCircleMapInfo(
+        @Parameter(
+            description = "검색 반경 (미터 단위)",
+            required = true,
+            example = "1000",
+            schema = @Schema(minimum = "1", maximum = "30000")
+        )
+        @RequestParam
+        @NotNull(message = "반경은 필수입니다")
+        @DecimalMin(value = "1", message = "반경은 1 이상이어야 합니다")
+        @DecimalMax(value = "30000", message = "반경은 30000 이하여야 합니다")
+        Double meters,
+
+        @Parameter(
+            description = "중심점 경도",
+            required = true,
+            example = "126.9780",
+            schema = @Schema(minimum = "124", maximum = "133")
+        )
+        @RequestParam
+        @NotNull(message = "경도는 필수입니다")
+        @DecimalMin(value = "124", message = "경도는 124 이상이어야 합니다")
+        @DecimalMax(value = "133", message = "경도는 133 이하여야 합니다")
+        Double longitude,
+
+        @Parameter(
+            description = "중심점 위도",
+            required = true,
+            example = "37.5665",
+            schema = @Schema(minimum = "33.0", maximum = "39")
+        )
+        @RequestParam
+        @NotNull(message = "위도는 필수입니다")
+        @DecimalMin(value = "33.0", message = "위도는 33 이상이어야 합니다")
+        @DecimalMax(value = "39", message = "위도는 39 이하여야 합니다")
+        Double latitude
+    ) {
+        return ResponseEntity.ok(BaseResponse.ok(
+            storyService.getCircleMapInfo(meters, longitude, latitude)
+        ));
+    }
+
 }

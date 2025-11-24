@@ -135,6 +135,56 @@ class StoryServiceMapInfoTest {
             .findByBoundingBox(anyDouble(), anyDouble(), anyDouble(), anyDouble());
     }
 
+    @Test
+    @DisplayName("중심점 반경 내의 이야기 스팟 목록을 조회한다")
+    void getCircleMapInfo_success() {
+        // given
+        Double meters = 1000.0;
+        Double longitude = 126.9780;
+        Double latitude = 37.5665;
+
+        StorySpot spot1 = createStorySpot(1L, 126.9790, 37.5670);
+        StorySpot spot2 = createStorySpot(2L, 126.9800, 37.5675);
+        StorySpot spot3 = createStorySpot(3L, 126.9770, 37.5660);
+
+        List<StorySpot> mockSpots = List.of(spot1, spot2, spot3);
+
+        given(storySpotRepository.findByRadius(longitude, latitude, meters))
+            .willReturn(mockSpots);
+
+        // when
+        MapSpotInfoList result = storyService.getCircleMapInfo(meters, longitude, latitude);
+
+        // then
+        assertThat(result.storySpots()).hasSize(3);
+        assertThat(result.storySpots().get(0).longitude()).isEqualTo(126.9790);
+        assertThat(result.storySpots().get(0).latitude()).isEqualTo(37.5670);
+        assertThat(result.storySpots().get(0).storySpotId()).isEqualTo(1L);
+
+        then(storySpotRepository).should(times(1))
+            .findByRadius(longitude, latitude, meters);
+    }
+
+    @Test
+    @DisplayName("반경 내에 스팟이 없는 경우 빈 목록을 반환한다")
+    void getCircleMapInfo_emptyResult() {
+        // given
+        Double meters = 1000.0;
+        Double longitude = 126.9780;
+        Double latitude = 37.5665;
+
+        given(storySpotRepository.findByRadius(longitude, latitude, meters))
+            .willReturn(List.of());
+
+        // when
+        MapSpotInfoList result = storyService.getCircleMapInfo(meters, longitude, latitude);
+
+        // then
+        assertThat(result.storySpots()).isEmpty();
+        then(storySpotRepository).should(times(1))
+            .findByRadius(longitude, latitude, meters);
+    }
+
     private StorySpot createStorySpot(Long id, Double longitude, Double latitude) {
         Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
 
