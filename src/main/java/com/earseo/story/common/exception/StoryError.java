@@ -10,6 +10,7 @@ public enum StoryError implements ErrorCodeInterface {
     STORY_IMAGE_TOO_MANY("STR001", "이야기의 사진은 3개 이하여야 합니다.", HttpStatus.BAD_REQUEST),
     ITS_NOT_YOU("STR002", "jwt 사용자와 입력 정보가 불일치 합니다.", HttpStatus.CONFLICT),
     STORY_IMAGE_UPLOAD_FAILED("STR003", "이미지 업로드 중 오류가 발생했습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_COORDINATE_RANGE("STR004", "최소 위도/경도는 최대 위도/경도보다 작아야 합니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String status;

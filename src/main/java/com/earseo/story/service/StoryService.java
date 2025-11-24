@@ -1,11 +1,10 @@
 package com.earseo.story.service;
 
 import ch.hsr.geohash.GeoHash;
+import ch.hsr.geohash.WGS84Point;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
-import com.earseo.story.dto.response.CreateResponse;
-import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
-import com.earseo.story.dto.response.SpotTitleListResponse;
+import com.earseo.story.dto.response.*;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +23,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static com.earseo.story.common.exception.StoryError.ITS_NOT_YOU;
-import static com.earseo.story.common.exception.StoryError.STORY_IMAGE_UPLOAD_FAILED;
+import static com.earseo.story.common.exception.StoryError.*;
 
 @Slf4j
 @Service
@@ -68,7 +66,8 @@ public class StoryService {
         }
         // GeoHash 처리
         String spotGeoHash = getGeoHash(body.longitude(), body.latitude());
-        Point centerPoint = createPoint(body.longitude(), body.latitude());
+        Point centerPoint = getGeohashCenterPoint(body.longitude(), body.latitude());
+        Point storyPoint = createPoint(body.longitude(), body.latitude());
         StorySpot geohashedSpot = storySpotRepository.findByGeohash(spotGeoHash)
             .orElseGet(() ->
                 storySpotRepository.save(
@@ -91,7 +90,7 @@ public class StoryService {
         Story story = storyRepository.save(Story.builder()
             .storySpot(geohashedSpot)
             .storyAuthor(storyAuthor)
-            .point(centerPoint)
+            .point(storyPoint)
             .storyTitle(storyTitle)
             .content(body.content())
             .locale(body.locale())
@@ -121,6 +120,15 @@ public class StoryService {
         Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
         point.setSRID(SRID_WGS84);
         return point;
+    }
+
+    /**
+     * Geohash 중심 좌표 계산 메서드
+     */
+    private Point getGeohashCenterPoint(double longitude, double latitude) {
+        GeoHash geoHashObject = GeoHash.withCharacterPrecision(latitude, longitude, GEOHASH_PRECISION);
+        WGS84Point centerWGS84 = geoHashObject.getBoundingBoxCenter();
+        return createPoint(centerWGS84.getLongitude(), centerWGS84.getLatitude());
     }
 
     /**
@@ -174,5 +182,28 @@ public class StoryService {
             storySpot.get().getId(),
             spotTitleAggregateRepository.findTop4TitleBySpotId(storySpot.get().getId(), Pageable.ofSize(4))
         );
+    }
+
+    public MapSpotInfoList getRectangleMapInfoList(
+        Double minLongitude, Double minLatitude,
+        Double maxLongitude, Double maxLatitude
+    ) {
+        if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
+            throw new BaseException(INVALID_COORDINATE_RANGE);
+        }
+
+        List<StorySpot> spots = storySpotRepository.findByBoundingBox(
+            minLongitude, minLatitude, maxLongitude, maxLatitude
+        );
+
+        List<SpotInfoResponse> responses = spots.stream()
+            .map(spot -> new SpotInfoResponse(
+                spot.getCenter().getX(),
+                spot.getCenter().getY(),
+                spot.getId()
+            ))
+            .toList();
+
+        return new MapSpotInfoList(responses);
     }
 }
