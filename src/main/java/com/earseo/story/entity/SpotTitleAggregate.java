@@ -44,5 +44,5 @@ public class SpotTitleAggregate {
     private Long storyCount = 0L;
 
     @LastModifiedDate
-    private LocalDateTime lastModifiedDate;
+    private LocalDateTime updatedAt;
 }

@@ -1,10 +1,12 @@
 package com.earseo.story.service;
 
+import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
 import com.earseo.story.dto.response.SpotTitleListResponse;
 import com.earseo.story.entity.SpotTitleAggregate;
 import com.earseo.story.entity.StorySpot;
 import com.earseo.story.entity.StoryTitle;
 import com.earseo.story.repository.SpotTitleAggregateRepository;
+import com.earseo.story.repository.StorySpotRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,17 +16,21 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("이야기 스팟 제목 조회 테스트")
 class StorySpotTitleListTest {
+
+    @Mock
+    private StorySpotRepository storySpotRepository;
 
     @Mock
     private SpotTitleAggregateRepository spotTitleAggregateRepository;
@@ -152,5 +158,117 @@ class StorySpotTitleListTest {
             .storyTitle(title)
             .storyCount(count)
             .build();
+    }
+
+    @Test
+    @DisplayName("좌표로 이야기 스팟 정보를 조회한다")
+    void getLocationSpotBriefInfo_success() {
+        // given
+        Double longitude = 126.9780;
+        Double latitude = 37.5665;
+        String expectedGeoHash = "wydm6";
+        Long storySpotId = 1L;
+
+        StorySpot storySpot = StorySpot.builder()
+            .id(storySpotId)
+            .geohash(expectedGeoHash)
+            .build();
+
+        StoryTitle title1 = StoryTitle.builder()
+            .id(1L)
+            .title("서울 여행")
+            .build();
+
+        StoryTitle title2 = StoryTitle.builder()
+            .id(2L)
+            .title("맛집 투어")
+            .build();
+
+        SpotTitleAggregate aggregate1 = SpotTitleAggregate.builder()
+            .id(1L)
+            .storySpot(storySpot)
+            .storyTitle(title1)
+            .storyCount(10L)
+            .build();
+
+        SpotTitleAggregate aggregate2 = SpotTitleAggregate.builder()
+            .id(2L)
+            .storySpot(storySpot)
+            .storyTitle(title2)
+            .storyCount(8L)
+            .build();
+
+        List<SpotTitleAggregate> mockAggregates = List.of(aggregate1, aggregate2);
+
+        given(storySpotRepository.findByGeohash(anyString()))
+            .willReturn(Optional.of(storySpot));
+        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+            .willReturn(mockAggregates);
+
+        // when
+        LocationSpotBriefInfoResponse response = storyService.getLocationSpotBriefInfo(longitude, latitude);
+
+        // then
+        assertThat(response.spotId()).isEqualTo(storySpotId);
+        assertThat(response.titles()).hasSize(2);
+        assertThat(response.titles()).containsExactly("서울 여행", "맛집 투어");
+        then(storySpotRepository).should(times(1)).findByGeohash(anyString());
+        then(spotTitleAggregateRepository).should(times(1))
+            .findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("해당 좌표에 이야기 스팟이 없는 경우 null spotId와 빈 타이틀 목록을 반환한다")
+    void getLocationSpotBriefInfo_noSpotFound() {
+        // given
+        Double longitude = 126.9780;
+        Double latitude = 37.5665;
+
+        given(storySpotRepository.findByGeohash(anyString()))
+            .willReturn(Optional.empty());
+
+        // when
+        LocationSpotBriefInfoResponse response = storyService.getLocationSpotBriefInfo(longitude, latitude);
+
+        // then
+        assertThat(response.spotId()).isNull();
+        assertThat(response.titles()).isEmpty();
+        then(storySpotRepository).should(times(1)).findByGeohash(anyString());
+        then(spotTitleAggregateRepository).should(never())
+            .findTop4TitleBySpotId(any(), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("이야기 스팟에 4개의 타이틀이 있는 경우 모두 반환한다")
+    void getLocationSpotBriefInfo_withFourTitles() {
+        // given
+        Double longitude = 126.9780;
+        Double latitude = 37.5665;
+        Long storySpotId = 1L;
+
+        StorySpot storySpot = StorySpot.builder()
+            .id(storySpotId)
+            .geohash("wydm6")
+            .build();
+
+        List<SpotTitleAggregate> mockAggregates = List.of(
+            createAggregate(1L, storySpot, "타이틀1", 100L),
+            createAggregate(2L, storySpot, "타이틀2", 90L),
+            createAggregate(3L, storySpot, "타이틀3", 80L),
+            createAggregate(4L, storySpot, "타이틀4", 70L)
+        );
+
+        given(storySpotRepository.findByGeohash(anyString()))
+            .willReturn(Optional.of(storySpot));
+        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+            .willReturn(mockAggregates);
+
+        // when
+        LocationSpotBriefInfoResponse response = storyService.getLocationSpotBriefInfo(longitude, latitude);
+
+        // then
+        assertThat(response.spotId()).isEqualTo(storySpotId);
+        assertThat(response.titles()).hasSize(4);
+        assertThat(response.titles()).containsExactly("타이틀1", "타이틀2", "타이틀3", "타이틀4");
     }
 }

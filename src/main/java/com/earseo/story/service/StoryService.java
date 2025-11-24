@@ -4,10 +4,10 @@ import ch.hsr.geohash.GeoHash;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
+import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
 import com.earseo.story.dto.response.SpotTitleListResponse;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -16,11 +16,13 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static com.earseo.story.common.exception.StoryError.ITS_NOT_YOU;
 import static com.earseo.story.common.exception.StoryError.STORY_IMAGE_UPLOAD_FAILED;
@@ -160,5 +162,17 @@ public class StoryService {
 
     public SpotTitleListResponse getSpotTitleList(Long storySpotId) {
         return SpotTitleListResponse.toDto(spotTitleAggregateRepository.findTop4TitleBySpotId(storySpotId, Pageable.ofSize(4)));
+    }
+
+    public LocationSpotBriefInfoResponse getLocationSpotBriefInfo(Double longitude, Double latitude) {
+        String geoHash = getGeoHash(longitude, latitude);
+        Optional<StorySpot> storySpot = storySpotRepository.findByGeohash(geoHash);
+        if (storySpot.isEmpty()) {
+            return LocationSpotBriefInfoResponse.toDto(null, List.of());
+        }
+        return LocationSpotBriefInfoResponse.toDto(
+            storySpot.get().getId(),
+            spotTitleAggregateRepository.findTop4TitleBySpotId(storySpot.get().getId(), Pageable.ofSize(4))
+        );
     }
 }
