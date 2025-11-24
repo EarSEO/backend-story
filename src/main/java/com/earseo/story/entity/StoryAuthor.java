@@ -5,9 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.geo.Point;
-import org.springframework.data.geo.Polygon;
 
 import java.time.LocalDateTime;
 
@@ -16,15 +14,12 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class StorySpot {
+public class StoryAuthor {
     @Id
-    @Column(name = "story_spot_id")
+    @Column(name = "story_author_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private Point center;
-    @Column(columnDefinition = "varchar(12)")
-    private String geohash;
-    @CreatedDate
-    @Column(updatable = false)
-    private LocalDateTime createdAt;
+    private String nickname;
+    private String profileUrl;
+    private LocalDateTime updatedAt;
 }
