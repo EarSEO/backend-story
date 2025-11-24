@@ -5,7 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -39,4 +42,7 @@ public class SpotTitleAggregate {
     @Builder.Default
     @Column(name = "story_count", nullable = false)
     private Long storyCount = 0L;
+
+    @LastModifiedDate
+    private LocalDateTime lastModifiedDate;
 }

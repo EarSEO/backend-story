@@ -4,6 +4,7 @@ import ch.hsr.geohash.GeoHash;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
+import com.earseo.story.dto.response.SpotTitleListResponse;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
 import jakarta.transaction.Transactional;
@@ -13,6 +14,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -154,5 +156,9 @@ public class StoryService {
                 log.error("이미지 업로드 롤백 실패", e);
             }
         }
+    }
+
+    public SpotTitleListResponse getSpotTitleList(Long storySpotId) {
+        return SpotTitleListResponse.toDto(spotTitleAggregateRepository.findTop4TitleBySpotId(storySpotId, Pageable.ofSize(4)));
     }
 }
