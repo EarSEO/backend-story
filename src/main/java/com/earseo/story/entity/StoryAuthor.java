@@ -1,11 +1,12 @@
 package com.earseo.story.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.geo.Point;
 
 import java.time.LocalDateTime;
 
@@ -17,9 +18,16 @@ import java.time.LocalDateTime;
 public class StoryAuthor {
     @Id
     @Column(name = "story_author_id")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nickname;
     private String profileUrl;
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    public StoryAuthor updateAuthor(String nickname, String profileUrl, LocalDateTime updatedAt) {
+        this.nickname = nickname;
+        this.profileUrl = profileUrl;
+        this.updatedAt = updatedAt;
+        return this;
+    }
 }

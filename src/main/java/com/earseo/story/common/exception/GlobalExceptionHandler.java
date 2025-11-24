@@ -20,8 +20,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<String>> handleBaseException(BaseException e) {
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(BaseResponse.onFailure(errorCode.getStatus(), errorCode.getMessage(), null));
+            .status(errorCode.getHttpStatus())
+            .body(BaseResponse.onFailure(errorCode.getStatus(), errorCode.getMessage(), null));
     }
 
     /**
@@ -30,15 +30,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<BaseResponse<String>> handleValidationException(MethodArgumentNotValidException e) {
         String errorMessage = e.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .findFirst()
-                .map(DefaultMessageSourceResolvable::getDefaultMessage)
-                .orElse("잘못된 요청입니다.");
+            .getFieldErrors()
+            .stream()
+            .findFirst()
+            .map(DefaultMessageSourceResolvable::getDefaultMessage)
+            .orElse("잘못된 요청입니다.");
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(BaseResponse.onFailure("ARGUMENT_ERROR", errorMessage, null));
+            .status(HttpStatus.BAD_REQUEST)
+            .body(BaseResponse.onFailure("ARGUMENT_ERROR", errorMessage, null));
     }
 
     /**
@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<BaseResponse<String>> handleUnexpectedException(Exception e) {
         log.error("서버 내부 오류 발생: ", e);
         return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(BaseResponse.onFailure("INTERNAL_SERVER_ERROR", "내부 서버 에러가 발생했습니다.", null));
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(BaseResponse.onFailure("INTERNAL_SERVER_ERROR", "내부 서버 에러가 발생했습니다.", null));
     }
 }

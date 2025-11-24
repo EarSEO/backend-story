@@ -63,7 +63,17 @@ management:
       application: ${spring.application.name}
   tracing:
     enabled: false
-
 logging:
   level:
     org.hibernate.SQL: ${LOGGING_LEVEL_ORG_HIBERNATE_SQL:debug}
+cloud:
+  aws:
+    credentials:
+      access-key: ${AWS_CREDENTAIL_ACCESS_KEY:acess_key}
+      secret-key: ${AWS_CREDENTAIL_SECRET_KEY:secret_key}
+    region:
+      static: ap-northeast-2
+    s3:
+      bucket: ${AWS_S#_BUCKET:example-bucket}
+    cloudfront:
+      domain: ${AWS_CLOUDFRONT_DOMAIN:cdn.example.com}

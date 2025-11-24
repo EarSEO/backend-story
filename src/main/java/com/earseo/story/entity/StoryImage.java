@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.geo.Point;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class StoryImage {
     @Id
     @Column(name = "story_image_id")
@@ -23,6 +24,7 @@ public class StoryImage {
     @JoinColumn(name = "story_id", nullable = false)
     @ManyToOne
     private Story story;
+    @Column(nullable = false, updatable = false)
     private String imageUrl;
     @CreatedDate
     @Column(updatable = false)

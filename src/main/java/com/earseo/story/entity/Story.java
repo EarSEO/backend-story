@@ -5,9 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.locationtech.jts.geom.Point;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.geo.Point;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Story {
     @Id
     @Column(name = "story_id")
@@ -27,6 +29,7 @@ public class Story {
     @JoinColumn(name = "story_author_id")
     @ManyToOne
     private StoryAuthor storyAuthor;
+    @Column(columnDefinition = "geometry(Point, 4326)")
     private Point point;
     private String title;
     @Column(columnDefinition = "text")
@@ -35,7 +38,8 @@ public class Story {
     private Locale locale;
     @Enumerated(EnumType.STRING)
     private StoryConcept storyConcept;
-    private Long likeCount; // 리팩토링해서 뺴내야함
+    @Builder.Default
+    private Long likeCount = 0L; // 리팩토링해서 뺴내야함
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
