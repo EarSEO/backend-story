@@ -1,6 +1,6 @@
 spring:
   application:
-    name: story
+    name: backend-story
   profiles:
     default: local
 server:
