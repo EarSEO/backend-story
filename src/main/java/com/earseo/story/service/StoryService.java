@@ -4,12 +4,10 @@ import ch.hsr.geohash.GeoHash;
 import ch.hsr.geohash.WGS84Point;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
-import com.earseo.story.dto.response.CreateResponse;
-import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
-import com.earseo.story.dto.response.MapSpotInfoList;
-import com.earseo.story.dto.response.SpotTitleListResponse;
+import com.earseo.story.dto.response.*;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
+import com.earseo.story.repository.projectionDto.SearchSpotProjection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -119,7 +117,7 @@ public class StoryService {
     /**
      * Point 생성 메서드
      */
-    private Point createPoint(double latitude, double longitude) {
+    private Point createPoint(double longitude, double latitude) {
         Point point = GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude));
         point.setSRID(SRID_WGS84);
         return point;
@@ -204,5 +202,29 @@ public class StoryService {
     public MapSpotInfoList getCircleMapInfo(Double meters, Double longitude, Double latitude) {
         List<StorySpot> spots = storySpotRepository.findByRadius(longitude, latitude, meters);
         return MapSpotInfoList.toDto(spots);
+    }
+
+    @Transactional(readOnly = true)
+    public SearchSpotInfoList searchTitleRectangle(
+        String keyword,
+        Double longitude, Double latitude,
+        Double minLongitude, Double minLatitude,
+        Double maxLongitude, Double maxLatitude,
+        int limit
+    ) {
+        if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
+            throw new BaseException(INVALID_COORDINATE_RANGE);
+        }
+        List<SearchSpotProjection> responses = spotTitleAggregateRepository.searchByTitleKeywordRectangle(
+            keyword,
+            longitude,
+            latitude,
+            minLongitude,
+            minLatitude,
+            maxLongitude,
+            maxLatitude,
+            limit
+        );
+        return SearchSpotInfoList.toDto(responses);
     }
 }

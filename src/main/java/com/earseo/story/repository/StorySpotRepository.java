@@ -16,7 +16,7 @@ public interface StorySpotRepository extends JpaRepository<StorySpot, Long> {
         FROM story_spot s
         WHERE ST_Intersects(
             s.center,
-            ST_MakeEnvelope(:minLatitude, :minLongitude, :maxLatitude, :maxLongitude, 4326)
+            ST_MakeEnvelope(:minLongitude, :minLatitude, :maxLongitude, :maxLatitude, 4326)
         )
         """, nativeQuery = true)
     List<StorySpot> findByBoundingBox(
@@ -31,7 +31,7 @@ public interface StorySpotRepository extends JpaRepository<StorySpot, Long> {
         FROM story_spot s
         WHERE ST_DWithin(
             s.center::geography,
-            ST_SetSRID(ST_MakePoint(:latitude, :longitude), 4326)::geography,
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
             :meters
         )
         """, nativeQuery = true)
