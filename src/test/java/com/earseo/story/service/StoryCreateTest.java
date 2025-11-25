@@ -55,6 +55,9 @@ class StoryCreateTest {
     private StoryTitleRepository storyTitleRepository;
 
     @Mock
+    private SpotTitleAggregateRepository spotTitleAggregateRepository;
+
+    @Mock
     private S3Service s3Service;
 
     @Test
@@ -76,6 +79,7 @@ class StoryCreateTest {
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.empty());
         given(storySpotRepository.save(any(StorySpot.class))).willReturn(savedSpot);
         given(storyRepository.save(any(Story.class))).willReturn(savedStory);
+        given(storyTitleRepository.save(any(StoryTitle.class))).willReturn(storyTitle);
 
         // When
         CreateResponse response = storyService.createStory(memberId, request, images);
@@ -111,6 +115,7 @@ class StoryCreateTest {
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(existingAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(existingSpot));
         given(storyRepository.save(any(Story.class))).willReturn(savedStory);
+        given(storyTitleRepository.save(any(StoryTitle.class))).willReturn(storyTitle);
 
         // When
         CreateResponse response = storyService.createStory(memberId, request, images);
@@ -158,6 +163,7 @@ class StoryCreateTest {
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(existingAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(existingSpot));
         given(storyRepository.save(any(Story.class))).willReturn(savedStory);
+        given(storyTitleRepository.save(any(StoryTitle.class))).willReturn(storyTitle);
 
         // When
         CreateResponse response = storyService.createStory(memberId, request, images);
@@ -195,6 +201,7 @@ class StoryCreateTest {
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(savedAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(savedSpot));
         given(storyRepository.save(any(Story.class))).willReturn(savedStory);
+        given(storyTitleRepository.save(any(StoryTitle.class))).willReturn(storyTitle);
         given(s3Service.uploadFile(any(MultipartFile.class), anyString()))
             .willReturn("https://cdn.example.com/image1.jpg")
             .willReturn("https://cdn.example.com/image2.jpg");
@@ -251,6 +258,7 @@ class StoryCreateTest {
         given(storyAuthorRepository.findById(1L)).willReturn(Optional.of(savedAuthor));
         given(storySpotRepository.findByGeohash(anyString())).willReturn(Optional.of(savedSpot));
         given(storyRepository.save(any(Story.class))).willReturn(savedStory);
+        given(storyTitleRepository.save(any(StoryTitle.class))).willReturn(storyTitle);
         given(s3Service.uploadFile(any(MultipartFile.class), anyString()))
             .willThrow(new RuntimeException("S3 업로드 실패"));
 
