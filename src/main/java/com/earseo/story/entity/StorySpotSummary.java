@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.locationtech.jts.geom.Point;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -17,15 +16,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class StorySpot {
+public class StorySpotSummary {
     @Id
-    @Column(name = "story_spot_id")
+    @Column(name = "story_spot_summary_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(columnDefinition = "geometry(Point, 4326)", nullable = false, updatable = false)
-    private Point center;
-    @Column(columnDefinition = "varchar(12)", nullable = false, updatable = false)
-    private String geohash;
+    @JoinColumn(name = "story_spot_id", nullable = false)
+    @ManyToOne
+    private StorySpot storySpot;
+    @Enumerated(EnumType.STRING)
+    private StoryConcept storyConcept;
+    private String docentUrl;
+    @Enumerated(EnumType.STRING)
+    private Locale locale;
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
