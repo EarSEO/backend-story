@@ -1,7 +1,9 @@
 package com.earseo.story.entity;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
+@Getter
 @AllArgsConstructor
 public enum StoryConcept {
     TIP("꿀팁", "Tip"),

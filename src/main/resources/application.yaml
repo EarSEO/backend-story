@@ -15,3 +15,19 @@ springdoc:
     display-request-duration: true
     operations-sorter: method
     tags-sorter: alpha
+
+summary:
+  hot-spot:
+    threshold: ${HOT_SPOT_THRESHOLD:30}
+  story-summary:
+    limit: ${STORY_SUMMARY_LIMIT:3}
+    threshold: ${STORY_SUMMARY_THRESHOLD:3}
+  schedule:
+    cron: ${SUMMARY_SCHEDULE_CRON:0 0 0,6,12,18 * * *}
+openai:
+  credential:
+    access-key: ${CREDENTIAL_OPENAI_ACCESS_KEY:}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+  temperature: ${OPENAI_TEMPERATURE:1.2}
+  top-p: ${OPENAI_TOP_P:0.9}
+  max-token: ${OPENAI_MAX_TOKEN:}

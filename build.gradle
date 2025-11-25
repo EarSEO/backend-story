@@ -48,6 +48,11 @@ dependencies {
 	implementation 'org.locationtech.jts:jts-core:1.19.0'
 	implementation 'ch.hsr:geohash:1.4.0' // Geohash
 	implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE' // AWS
+
+	implementation 'org.springframework.ai:spring-ai-client-chat:1.1.0'
+	implementation 'org.springframework.ai:spring-ai-openai:1.1.0'
+
+	implementation 'io.hypersistence:hypersistence-utils-hibernate-63:3.12.0' // JSONB 타입 활용을 위해 사용
 }
 
 tasks.named('test') {
