@@ -85,4 +85,21 @@ public interface SpotTitleAggregateRepository extends JpaRepository<SpotTitleAgg
         @Param("maxLat") Double maxLatitude,
         @Param("limit") Integer limit
     );
+
+    @Modifying
+    @Query(value = """
+    INSERT INTO spot_title_aggregate (story_spot_id, story_title_id, story_count, updated_at)
+    VALUES (:storySpotId, :storyTitleId, -1, CURRENT_TIMESTAMP)
+    ON CONFLICT ON CONSTRAINT spot_title_unique_constraint
+    DO UPDATE SET
+        story_count = spot_title_aggregate.story_count - 1,
+        updated_at = CURRENT_TIMESTAMP;
+    
+    DELETE FROM spot_title_aggregate 
+    WHERE story_spot_id = :storySpotId 
+      AND story_title_id = :storyTitleId 
+      AND story_count <= 0
+    """, nativeQuery = true)
+    void decrementOrDelete(@Param("storySpotId") Long storySpotId,
+                           @Param("storyTitleId") Long storyTitleId);
 }

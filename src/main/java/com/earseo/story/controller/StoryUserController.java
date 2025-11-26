@@ -3,9 +3,11 @@ package com.earseo.story.controller;
 import com.earseo.story.common.BaseResponse;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
+import com.earseo.story.dto.request.UpdateStoryRequest;
 import com.earseo.story.dto.response.CreateResponse;
 import com.earseo.story.dto.response.MyStoryListResponse;
 import com.earseo.story.dto.response.ToggleLikeResponse;
+import com.earseo.story.dto.response.UpdateStoryResponse;
 import com.earseo.story.service.StoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -195,5 +197,79 @@ public class StoryUserController {
             @PathVariable Long storyId
     ) {
         return ResponseEntity.ok(BaseResponse.ok(storyService.toggleLike(storyId, memberId)));
+    }
+
+    @Operation(
+            summary = "이야기 수정",
+            description = """
+        작성한 이야기를 수정합니다.
+        - 작성자 본인만 수정 가능
+        - 제목, 내용, 컨셉, 이미지 수정 가능
+        - 이미지는 keepImageUrls로 유지할 이미지를 지정하고, files로 새 이미지 추가
+        - 최종 이미지는 최대 3개까지 가능
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "수정 성공",
+                    content = @Content(schema = @Schema(implementation = UpdateStoryResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "status": "STR006",
+                        "message": "이야기 작성자만 수정/삭제할 수 있습니다.",
+                        "data": null
+                    }
+                    """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이야기를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "status": "STR005",
+                        "message": "이야기를 찾을 수 없습니다.",
+                        "data": null
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @PatchMapping(value = "/{storyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<BaseResponse<UpdateStoryResponse>> updateStory(
+            @Parameter(description = "사용자 ID", required = true)
+            @RequestHeader("X-USER-ID") Long memberId,
+
+            @Parameter(description = "수정할 이야기 ID", required = true)
+            @PathVariable Long storyId,
+
+            @Parameter(
+                    description = "이야기 수정 요청 바디",
+                    required = true,
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
+            )
+            @Valid @RequestPart UpdateStoryRequest body,
+
+            @Parameter(
+                    description = "새로 추가할 이미지 파일 (최대 3개)",
+                    required = false,
+                    content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE)
+            )
+            @RequestPart(required = false) List<MultipartFile> files
+    ) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.updateStory(storyId, memberId, body, files)));
     }
 }

@@ -4,6 +4,7 @@ import ch.hsr.geohash.GeoHash;
 import ch.hsr.geohash.WGS84Point;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
+import com.earseo.story.dto.request.UpdateStoryRequest;
 import com.earseo.story.dto.response.*;
 import com.earseo.story.entity.*;
 import com.earseo.story.repository.*;
@@ -271,5 +272,91 @@ public class StoryService {
         boolean isLiked = likeService.toggleLike(storyId, memberId);
         Long likeCount = likeService.getLikeCount(storyId);
         return new ToggleLikeResponse(isLiked, likeCount);
+    }
+
+    @Transactional
+    public UpdateStoryResponse updateStory(Long storyId, Long memberId, UpdateStoryRequest request, List<MultipartFile> newImages) {
+        // Story 조회 및 작성자 검증
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
+
+        if (!story.getStoryAuthor().getId().equals(memberId)) {
+            throw new BaseException(STORY_NOT_OWNER);
+        }
+
+        // 제목 변경 처리
+        if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
+            // 기존 제목 카운트 감소
+            spotTitleAggregateRepository.decrementOrDelete(
+                    story.getStorySpot().getId(),
+                    story.getStoryTitle().getId()
+            );
+
+            // 새 제목 조회 또는 생성
+            StoryTitle newTitle = storyTitleRepository.findByTitle(request.title())
+                    .orElseGet(() -> storyTitleRepository.save(
+                            StoryTitle.builder()
+                                    .title(request.title())
+                                    .build()
+                    ));
+
+            // 새 제목 카운트 증가
+            spotTitleAggregateRepository.incrementOrCreate(
+                    story.getStorySpot().getId(),
+                    newTitle.getId()
+            );
+
+        }
+
+        // 내용/컨셉 변경
+        String newContent = request.content() != null ? request.content() : story.getContent();
+        StoryConcept newConcept = request.storyConcept() != null ? request.storyConcept() : story.getStoryConcept();
+
+        // 이미지 처리
+        List<StoryImage> existingImages = storyImageRepository.findByStoryId(storyId);
+        List<String> keepUrls = request.keepImageUrls() != null ? request.keepImageUrls() : List.of();
+
+        // 삭제할 이미지 S3에서 제거
+        existingImages.stream()
+                .filter(img -> !keepUrls.contains(img.getImageUrl()))
+                .forEach(img -> {
+                    try {
+                        s3Service.deleteFile(img.getImageUrl());
+                    } catch (Exception e) {
+                        log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
+                    }
+                });
+
+        // DB에서 삭제
+        if (!keepUrls.isEmpty()) {
+            storyImageRepository.deleteByStoryIdAndImageUrlNotIn(storyId, keepUrls);
+        } else {
+            // keepUrls가 비어있으면 모든 이미지 삭제
+            storyImageRepository.deleteAll(existingImages);
+        }
+
+        // 새 이미지 업로드 및 저장
+        int currentImageCount = keepUrls.size();
+        if (newImages != null && !newImages.isEmpty()) {
+            if (currentImageCount + newImages.size() > 3) {
+                throw new BaseException(STORY_IMAGE_TOO_MANY);
+            }
+
+            List<StoryImage> newStoryImages = getImageList(
+                    newImages,
+                    story.getStorySpot().getGeohash(),
+                    story
+            );
+            storyImageRepository.saveAll(newStoryImages);
+        }
+
+        // Story 엔티티 업데이트
+        StoryTitle titleToUpdate = null;
+        if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
+            titleToUpdate = storyTitleRepository.findByTitle(request.title()).orElseThrow();
+        }
+        story.updateStory(titleToUpdate, newContent, newConcept);
+
+        return new UpdateStoryResponse(story.getId(), story.getUpdatedAt());
     }
 }

@@ -57,4 +57,16 @@ public class Story {
             this.likeCount--;
         }
     }
+
+    public void updateStory(StoryTitle newTitle, String newContent, StoryConcept newConcept) {
+        if (newTitle != null) {
+            this.storyTitle = newTitle;
+        }
+        if (newContent != null) {
+            this.content = newContent;
+        }
+        if (newConcept != null) {
+            this.storyConcept = newConcept;
+        }
+    }
 }
