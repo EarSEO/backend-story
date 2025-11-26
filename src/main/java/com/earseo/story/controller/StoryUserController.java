@@ -5,6 +5,7 @@ import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
 import com.earseo.story.dto.response.MyStoryListResponse;
+import com.earseo.story.dto.response.ToggleLikeResponse;
 import com.earseo.story.service.StoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -151,5 +152,48 @@ public class StoryUserController {
             @RequestParam(defaultValue = "10") int size
     ) {
         return ResponseEntity.ok(BaseResponse.ok(storyService.getMyStories(memberId, lastStoryId, size)));
+    }
+
+    @Operation(
+            summary = "이야기 좋아요 토글",
+            description = """
+        이야기에 좋아요를 추가하거나 취소합니다.
+        - 좋아요가 없으면 추가, 있으면 취소
+        - Redis 캐싱으로 성능 최적화
+        - 응답에 현재 좋아요 상태와 총 개수 포함
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "좋아요 토글 성공",
+                    content = @Content(schema = @Schema(implementation = ToggleLikeResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이야기를 찾을 수 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    value = """
+                    {
+                        "status": "STR005",
+                        "message": "이야기를 찾을 수 없습니다.",
+                        "data": null
+                    }
+                    """
+                            )
+                    )
+            )
+    })
+    @PostMapping("/{storyId}/like")
+    public ResponseEntity<BaseResponse<ToggleLikeResponse>> toggleLike(
+            @Parameter(description = "사용자 ID", required = true)
+            @RequestHeader("X-USER-ID") Long memberId,
+
+            @Parameter(description = "좋아요할 이야기 ID", required = true)
+            @PathVariable Long storyId
+    ) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.toggleLike(storyId, memberId)));
     }
 }

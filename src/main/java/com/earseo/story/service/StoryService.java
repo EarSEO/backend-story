@@ -42,6 +42,7 @@ public class StoryService {
     private final StoryImageRepository storyImageRepository;
     private final StoryTitleRepository storyTitleRepository;
     private final SpotTitleAggregateRepository spotTitleAggregateRepository;
+    private final LikeService likeService;
 
     @Transactional
     public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
@@ -263,5 +264,12 @@ public class StoryService {
         }
 
         return MyStoryListResponse.toDto(stories, imageUrlMap, hasNext);
+    }
+
+    @Transactional
+    public ToggleLikeResponse toggleLike(Long storyId, Long memberId) {
+        boolean isLiked = likeService.toggleLike(storyId, memberId);
+        Long likeCount = likeService.getLikeCount(storyId);
+        return new ToggleLikeResponse(isLiked, likeCount);
     }
 }
