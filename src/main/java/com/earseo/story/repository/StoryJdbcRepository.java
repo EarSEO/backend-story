@@ -37,14 +37,13 @@ public class StoryJdbcRepository {
             return Collections.emptyMap();
         }
 
-        //TODO 좋아요 기능 구현 후에는 ROW_NUMBER 의 ORDER BY 절만 수정
         String sql = """
             WITH ranked_stories AS (
                 SELECT 
                     s.*,
                     ROW_NUMBER() OVER (
                         PARTITION BY s.story_spot_id, s.story_concept 
-                        ORDER BY s.created_at DESC
+                        ORDER BY s.like_count DESC, s.created_at DESC
                     ) as rn
                 FROM story s
                 WHERE s.story_spot_id IN (:hotSpotIds)
