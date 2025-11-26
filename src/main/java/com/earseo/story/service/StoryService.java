@@ -16,9 +16,9 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -251,7 +251,7 @@ public class StoryService {
         );
 
         // 이야기 목록
-        Page<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(
+        Slice<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(
             storySpotId, pageable
         );
 
@@ -272,5 +272,23 @@ public class StoryService {
             .findByStorySpotIdAndLocale(storySpotId, locale);
 
         return SpotTotalInfoResponse.toDto(storySpot, topTitles, storyPage, imageUrlsMap, summaries);
+    }
+
+    public SpotStoryPageResponse getSpotStorieSlice(Long storySpotId, Pageable pageable) {
+        // 이야기 목록
+        Slice<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(storySpotId, pageable);
+
+        // 이미지 조회
+        List<Long> storyIds = storyPage.getContent().stream()
+            .map(Story::getId)
+            .toList();
+        List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+
+        Map<Long, List<String>> imageUrlsMap = storyImages.stream()
+            .collect(Collectors.groupingBy(
+                image -> image.getStory().getId(),
+                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+            ));
+        return SpotStoryPageResponse.toDto(storyPage, imageUrlsMap);
     }
 }

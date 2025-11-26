@@ -29,11 +29,8 @@ public record StoryInfoResponse(
     List<String> imageUrls
 ) {
     public static StoryInfoResponse toDto(Story story, List<String> imageUrls) {
-        StoryAuthorResponse authorResponse = story.getStoryAuthor() != null
-            ? StoryAuthorResponse.toDto(story.getStoryAuthor()) : null;
-
         return new StoryInfoResponse(
-            authorResponse,
+            StoryAuthorResponse.toDto(story.getStoryAuthor()),
             story.getStoryTitle().getTitle(),
             story.getContent(),
             story.getLocale(),

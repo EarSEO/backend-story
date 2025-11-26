@@ -485,6 +485,16 @@ public class StoryController {
             - likeCount,desc : 좋아요순
             """
     )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = SpotTotalInfoResponse.class)
+            )
+        )
+    })
     @GetMapping("/spot/{storySpotId}/info")
     public ResponseEntity<BaseResponse<SpotTotalInfoResponse>> getSpotTotalInfo(
         @Parameter(
@@ -533,5 +543,36 @@ public class StoryController {
             pageRequest.toPageable()
         );
         return ResponseEntity.ok(BaseResponse.ok(response));
+    }
+
+    @Operation(
+        summary = "스팟 이야기 목록 조회",
+        description = """
+            특정 스팟의 이야기 목록을 조회합니다.
+            
+            정렬 옵션:
+            - createdAt,desc : 최신순
+            - createdAt,asc : 오래된순
+            - likeCount,desc : 좋아요순
+            """
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description = "조회 성공",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(implementation = SpotStoryPageResponse.class)
+            )
+        )
+    })
+    @GetMapping("/spot/{storySpotId}/stories")
+    public ResponseEntity<BaseResponse<SpotStoryPageResponse>> getSpotStorieSlice(
+        @Parameter(description = "이야기 스팟 ID", required = true, example = "1")
+        @PathVariable Long storySpotId,
+        @ParameterObject
+        StoryPageRequest pageRequest
+    ) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.getSpotStorieSlice(storySpotId, pageRequest.toPageable())));
     }
 }

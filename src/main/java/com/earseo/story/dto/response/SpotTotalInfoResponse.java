@@ -5,7 +5,7 @@ import com.earseo.story.entity.Story;
 import com.earseo.story.entity.StorySpotSummary;
 import com.earseo.story.repository.projectionDto.StorySpotWithDistanceProjection;
 import io.swagger.v3.oas.annotations.media.Schema;
-import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Slice;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +25,7 @@ public record SpotTotalInfoResponse(
     public static SpotTotalInfoResponse toDto(
         StorySpotWithDistanceProjection storySpotWithDistanceProjection,
         List<SpotTitleAggregate> topTitles,
-        Page<Story> storyPage,
+        Slice<Story> storyPage,
         Map<Long, List<String>> imageUrlsMap,
         List<StorySpotSummary> summaries
     ) {

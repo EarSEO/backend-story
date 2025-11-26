@@ -1,6 +1,5 @@
 package com.earseo.story.dto.response;
 
-import com.earseo.story.entity.Story;
 import com.earseo.story.entity.StoryAuthor;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -13,6 +12,7 @@ public record StoryAuthorResponse(
     String profileUrl
 ) {
     public static StoryAuthorResponse toDto(StoryAuthor storyAuthor) {
+        if (storyAuthor == null) return new StoryAuthorResponse(null, null, null);
         return new StoryAuthorResponse(
             storyAuthor.getId(),
             storyAuthor.getNickname(),
