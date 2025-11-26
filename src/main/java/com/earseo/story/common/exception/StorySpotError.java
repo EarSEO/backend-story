@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 @AllArgsConstructor
 public enum StorySpotError implements ErrorCodeInterface {
 
-    STORY_SPOT_ERROR("STS001", "스토리 스팟에러를 입력해주세요.", HttpStatus.I_AM_A_TEAPOT),
+    STORY_SPOT_NOT_FOUND("STS001", "없는 스토리 스팟입니다.", HttpStatus.NOT_FOUND),
     ;
 
     private final String status;
@@ -18,9 +18,9 @@ public enum StorySpotError implements ErrorCodeInterface {
     @Override
     public ErrorCode getErrorCode() {
         return ErrorCode.builder()
-                .status(status)
-                .message(message)
-                .httpStatus(httpStatus)
-                .build();
+            .status(status)
+            .message(message)
+            .httpStatus(httpStatus)
+            .build();
     }
 }

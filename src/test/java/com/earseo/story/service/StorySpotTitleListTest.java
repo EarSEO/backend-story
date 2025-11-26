@@ -86,7 +86,7 @@ class StorySpotTitleListTest {
 
         List<SpotTitleAggregate> mockAggregates = List.of(aggregate1, aggregate2, aggregate3);
 
-        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+        given(spotTitleAggregateRepository.findTopTitleBySpotId(eq(storySpotId), any(Pageable.class)))
             .willReturn(mockAggregates);
 
         // when
@@ -96,7 +96,7 @@ class StorySpotTitleListTest {
         assertThat(response.titles()).hasSize(3);
         assertThat(response.titles()).containsExactly("서울 여행", "맛집 투어", "카페 탐방");
         then(spotTitleAggregateRepository).should(times(1))
-            .findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class));
+            .findTopTitleBySpotId(eq(storySpotId), any(Pageable.class));
     }
 
     @Test
@@ -106,7 +106,7 @@ class StorySpotTitleListTest {
         Long storySpotId = 999L;
         List<SpotTitleAggregate> emptyList = List.of();
 
-        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+        given(spotTitleAggregateRepository.findTopTitleBySpotId(eq(storySpotId), any(Pageable.class)))
             .willReturn(emptyList);
 
         // when
@@ -115,7 +115,7 @@ class StorySpotTitleListTest {
         // then
         assertThat(response.titles()).isEmpty();
         then(spotTitleAggregateRepository).should(times(1))
-            .findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class));
+            .findTopTitleBySpotId(eq(storySpotId), any(Pageable.class));
     }
 
     @Test
@@ -135,7 +135,7 @@ class StorySpotTitleListTest {
             createAggregate(4L, storySpot, "제목4", 70L)
         );
 
-        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+        given(spotTitleAggregateRepository.findTopTitleBySpotId(eq(storySpotId), any(Pageable.class)))
             .willReturn(mockAggregates);
 
         // when
@@ -202,7 +202,7 @@ class StorySpotTitleListTest {
 
         given(storySpotRepository.findByGeohash(anyString()))
             .willReturn(Optional.of(storySpot));
-        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+        given(spotTitleAggregateRepository.findTopTitleBySpotId(eq(storySpotId), any(Pageable.class)))
             .willReturn(mockAggregates);
 
         // when
@@ -214,7 +214,7 @@ class StorySpotTitleListTest {
         assertThat(response.titles()).containsExactly("서울 여행", "맛집 투어");
         then(storySpotRepository).should(times(1)).findByGeohash(anyString());
         then(spotTitleAggregateRepository).should(times(1))
-            .findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class));
+            .findTopTitleBySpotId(eq(storySpotId), any(Pageable.class));
     }
 
     @Test
@@ -235,7 +235,7 @@ class StorySpotTitleListTest {
         assertThat(response.titles()).isEmpty();
         then(storySpotRepository).should(times(1)).findByGeohash(anyString());
         then(spotTitleAggregateRepository).should(never())
-            .findTop4TitleBySpotId(any(), any(Pageable.class));
+            .findTopTitleBySpotId(any(), any(Pageable.class));
     }
 
     @Test
@@ -260,7 +260,7 @@ class StorySpotTitleListTest {
 
         given(storySpotRepository.findByGeohash(anyString()))
             .willReturn(Optional.of(storySpot));
-        given(spotTitleAggregateRepository.findTop4TitleBySpotId(eq(storySpotId), any(Pageable.class)))
+        given(spotTitleAggregateRepository.findTopTitleBySpotId(eq(storySpotId), any(Pageable.class)))
             .willReturn(mockAggregates);
 
         // when

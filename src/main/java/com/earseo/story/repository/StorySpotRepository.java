@@ -1,6 +1,7 @@
 package com.earseo.story.repository;
 
 import com.earseo.story.entity.StorySpot;
+import com.earseo.story.repository.projectionDto.StorySpotWithDistanceProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -39,5 +40,23 @@ public interface StorySpotRepository extends JpaRepository<StorySpot, Long> {
         @Param("longitude") Double longitude,
         @Param("latitude") Double latitude,
         @Param("meters") Double meters
+    );
+
+    @Query(value = """
+        SELECT s.story_spot_id,
+        ST_X(s.center) longitude,
+        ST_Y(s.center) latitude,
+        s.geohash, s.created_at,
+        ST_Distance(
+            center::geography,
+            ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+        ) as distance
+        FROM story_spot s
+        WHERE s.story_spot_id = :story_spot_id
+        """, nativeQuery = true)
+    Optional<StorySpotWithDistanceProjection> findByIdWithDistance(
+        @Param("story_spot_id") Long storySpotId,
+        @Param("longitude") Double longitude,
+        @Param("latitude") Double latitude
     );
 }

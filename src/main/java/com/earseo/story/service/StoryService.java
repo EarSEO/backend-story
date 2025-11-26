@@ -6,25 +6,28 @@ import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.*;
 import com.earseo.story.entity.*;
+import com.earseo.story.entity.Locale;
 import com.earseo.story.repository.*;
 import com.earseo.story.repository.projectionDto.SearchSpotProjection;
+import com.earseo.story.repository.projectionDto.StorySpotWithDistanceProjection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.earseo.story.common.exception.StoryError.*;
+import static com.earseo.story.common.exception.StorySpotError.STORY_SPOT_NOT_FOUND;
 
 @Slf4j
 @Service
@@ -35,6 +38,7 @@ public class StoryService {
     private static final GeometryFactory GEOMETRY_FACTORY =
         new GeometryFactory(new PrecisionModel(), SRID_WGS84);
     private static final String STORY_S3_PATH_FORMAT = "story/%s/%d";
+    private static final int STORY_SPOT_CANDIDATE_TITLE_LIMIT = 4;
 
     private final StorySpotRepository storySpotRepository;
     private final StoryAuthorRepository storyAuthorRepository;
@@ -43,6 +47,7 @@ public class StoryService {
     private final StoryImageRepository storyImageRepository;
     private final StoryTitleRepository storyTitleRepository;
     private final SpotTitleAggregateRepository spotTitleAggregateRepository;
+    private final StorySpotSummaryRepository storySpotSummaryRepository;
 
     @Transactional
     public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
@@ -170,7 +175,7 @@ public class StoryService {
     }
 
     public SpotTitleListResponse getSpotTitleList(Long storySpotId) {
-        return SpotTitleListResponse.toDto(spotTitleAggregateRepository.findTop4TitleBySpotId(storySpotId, Pageable.ofSize(4)));
+        return SpotTitleListResponse.toDto(spotTitleAggregateRepository.findTopTitleBySpotId(storySpotId, Pageable.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT)));
     }
 
     public LocationSpotBriefInfoResponse getLocationSpotBriefInfo(Double longitude, Double latitude) {
@@ -181,7 +186,7 @@ public class StoryService {
         }
         return LocationSpotBriefInfoResponse.toDto(
             storySpot.get().getId(),
-            spotTitleAggregateRepository.findTop4TitleBySpotId(storySpot.get().getId(), Pageable.ofSize(4))
+            spotTitleAggregateRepository.findTopTitleBySpotId(storySpot.get().getId(), Pageable.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT))
         );
     }
 
@@ -226,5 +231,46 @@ public class StoryService {
             limit
         );
         return SearchSpotInfoList.toDto(responses);
+    }
+
+    public SpotTotalInfoResponse getSpotTotalInfo(
+        Long storySpotId,
+        Double longitude,
+        Double latitude,
+        Locale locale,
+        Pageable pageable
+    ) {
+        // 스팟 정보
+        StorySpotWithDistanceProjection storySpot = storySpotRepository.findByIdWithDistance(storySpotId, longitude, latitude)
+            .orElseThrow(() -> new BaseException(STORY_SPOT_NOT_FOUND));
+
+        // 상위 4개 제목
+        List<SpotTitleAggregate> topTitles = spotTitleAggregateRepository.findTopTitleBySpotId(
+            storySpotId,
+            PageRequest.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT)
+        );
+
+        // 이야기 목록
+        Page<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(
+            storySpotId, pageable
+        );
+
+        // 이미지 조회
+        List<Long> storyIds = storyPage.getContent().stream()
+            .map(Story::getId)
+            .toList();
+        List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+
+        Map<Long, List<String>> imageUrlsMap = storyImages.stream()
+            .collect(Collectors.groupingBy(
+                image -> image.getStory().getId(),
+                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+            ));
+
+        // 요약 목록
+        List<StorySpotSummary> summaries = storySpotSummaryRepository
+            .findByStorySpotIdAndLocale(storySpotId, locale);
+
+        return SpotTotalInfoResponse.toDto(storySpot, topTitles, storyPage, imageUrlsMap, summaries);
     }
 }

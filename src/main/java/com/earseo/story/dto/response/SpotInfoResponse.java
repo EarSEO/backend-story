@@ -1,6 +1,7 @@
 package com.earseo.story.dto.response;
 
 import com.earseo.story.entity.StorySpot;
+import com.earseo.story.repository.projectionDto.StorySpotWithDistanceProjection;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record SpotInfoResponse(
@@ -13,5 +14,9 @@ public record SpotInfoResponse(
 ) {
     public static SpotInfoResponse toDto(StorySpot entity) {
         return new SpotInfoResponse(entity.getCenter().getX(), entity.getCenter().getY(), entity.getId());
+    }
+
+    public static SpotInfoResponse toDto(StorySpotWithDistanceProjection storySpotWithDistanceProjection) {
+        return new SpotInfoResponse(storySpotWithDistanceProjection.getLongitude(), storySpotWithDistanceProjection.getLatitude(), storySpotWithDistanceProjection.getStorySpotId());
     }
 }

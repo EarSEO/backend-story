@@ -1,10 +1,9 @@
 package com.earseo.story.controller;
 
 import com.earseo.story.common.BaseResponse;
-import com.earseo.story.dto.response.LocationSpotBriefInfoResponse;
-import com.earseo.story.dto.response.MapSpotInfoList;
-import com.earseo.story.dto.response.SearchSpotInfoList;
-import com.earseo.story.dto.response.SpotTitleListResponse;
+import com.earseo.story.dto.request.StoryPageRequest;
+import com.earseo.story.dto.response.*;
+import com.earseo.story.entity.Locale;
 import com.earseo.story.service.StoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -474,4 +474,64 @@ public class StoryController {
         ));
     }
 
+    @Operation(
+        summary = "스팟 전체 정보 조회",
+        description = """
+            특정 스팟의 상세 정보를 조회합니다.
+            
+            정렬 옵션:
+            - createdAt,desc : 최신순
+            - createdAt,asc : 오래된순
+            - likeCount,desc : 좋아요순
+            """
+    )
+    @GetMapping("/spot/{storySpotId}/info")
+    public ResponseEntity<BaseResponse<SpotTotalInfoResponse>> getSpotTotalInfo(
+        @Parameter(
+            description = "기준 경도",
+            required = true,
+            example = "126.9780",
+            schema = @Schema(minimum = "124", maximum = "133")
+        )
+        @RequestParam
+        @NotNull(message = "경도는 필수입니다")
+        @DecimalMin(value = "124", message = "경도는 124 이상이어야 합니다")
+        @DecimalMax(value = "133", message = "경도는 133 이하여야 합니다")
+        Double longitude,
+
+        @Parameter(
+            description = "기준 위도",
+            required = true,
+            example = "37.5665",
+            schema = @Schema(minimum = "33.0", maximum = "39")
+        )
+        @RequestParam
+        @NotNull(message = "위도는 필수입니다")
+        @DecimalMin(value = "33.0", message = "위도는 33 이상이어야 합니다")
+        @DecimalMax(value = "39", message = "위도는 39 이하여야 합니다")
+        Double latitude,
+
+        @Parameter(
+            description = "사용자 언어",
+            required = true,
+            example = "KO"
+        )
+        @RequestParam
+        @NotNull(message = "언어는 필수입니다")
+        Locale locale,
+        @Parameter(description = "이야기 스팟 ID", required = true, example = "1")
+        @PathVariable Long storySpotId,
+
+        @ParameterObject
+        StoryPageRequest pageRequest
+    ) {
+        SpotTotalInfoResponse response = storyService.getSpotTotalInfo(
+            storySpotId,
+            longitude,
+            latitude,
+            locale,
+            pageRequest.toPageable()
+        );
+        return ResponseEntity.ok(BaseResponse.ok(response));
+    }
 }
