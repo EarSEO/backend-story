@@ -4,6 +4,7 @@ import com.earseo.story.common.BaseResponse;
 import com.earseo.story.common.exception.BaseException;
 import com.earseo.story.dto.request.CreateRequest;
 import com.earseo.story.dto.response.CreateResponse;
+import com.earseo.story.dto.response.MyStoryListResponse;
 import com.earseo.story.service.StoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -119,5 +120,36 @@ public class StoryUserController {
     ) {
         if (images != null && images.size() > 3) throw new BaseException(STORY_IMAGE_TOO_MANY);
         return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, body, images)));
+    }
+
+    @Operation(
+            summary = "나의 이야기 목록 조회",
+            description = """
+        로그인한 사용자가 작성한 이야기 목록을 최신순으로 조회합니다.
+        - 무한 스크롤 지원 (Cursor 기반 페이징)
+        - 첫 조회: lastStoryId 없이 호출
+        - 이후 조회: 이전 응답의 lastStoryId를 파라미터로 전달
+        - 이미지, 좋아요 개수, 위치 정보 포함
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = MyStoryListResponse.class))
+            )
+    })
+    @GetMapping("/my")
+    public ResponseEntity<BaseResponse<MyStoryListResponse>> getMyStories(
+            @Parameter(description = "사용자 ID", required = true)
+            @RequestHeader("X-USER-ID") Long memberId,
+
+            @Parameter(description = "마지막 이야기 ID (첫 조회 시 생략)", example = "42")
+            @RequestParam(required = false) Long lastStoryId,
+
+            @Parameter(description = "조회할 개수", example = "10")
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.getMyStories(memberId, lastStoryId, size)));
     }
 }

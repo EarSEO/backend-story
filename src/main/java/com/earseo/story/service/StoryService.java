@@ -14,15 +14,14 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.earseo.story.common.exception.StoryError.*;
 
@@ -226,5 +225,43 @@ public class StoryService {
             limit
         );
         return SearchSpotInfoList.toDto(responses);
+    }
+
+    @Transactional(readOnly = true)
+    public MyStoryListResponse getMyStories(Long memberId, Long lastStoryId, int size) {
+        // size + 1개 조회해서 hasNext 판단
+        Pageable pageable = PageRequest.of(0, size + 1);
+
+        List<Story> stories;
+        if (lastStoryId == null) {
+            // 첫 조회
+            stories = storyRepository.findByStoryAuthorIdOrderByIdDesc(memberId, pageable);
+        } else {
+            // 이후 조회
+            stories = storyRepository.findByStoryAuthorIdAndIdLessThanOrderByIdDesc(memberId, lastStoryId, pageable);
+        }
+
+        // hasNext 판단
+        boolean hasNext = stories.size() > size;
+        if (hasNext) {
+            stories = stories.subList(0, size); // 실제 size만큼만 반환
+        }
+
+        // 이미지 조회 (N+1 방지)
+        List<Long> storyIds = stories.stream()
+                .map(Story::getId)
+                .toList();
+
+        Map<Long, List<String>> imageUrlMap = Map.of();
+        if (!storyIds.isEmpty()) {
+            List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+            imageUrlMap = storyImages.stream()
+                    .collect(Collectors.groupingBy(
+                            si -> si.getStory().getId(),
+                            Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                    ));
+        }
+
+        return MyStoryListResponse.toDto(stories, imageUrlMap, hasNext);
     }
 }
