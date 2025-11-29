@@ -30,7 +30,7 @@ public interface SpotTitleAggregateRepository extends JpaRepository<SpotTitleAgg
             ORDER BY s.storyCount DESC, s.updatedAt DESC
         """)
     @EntityGraph(attributePaths = {"storyTitle"})
-    List<SpotTitleAggregate> findTop4TitleBySpotId(@Param("storySpotId") Long storySpotId, Pageable pageable);
+    List<SpotTitleAggregate> findTopTitleBySpotId(@Param("storySpotId") Long storySpotId, Pageable pageable);
 
     @Query(value = """
         WITH ranked_titles AS (

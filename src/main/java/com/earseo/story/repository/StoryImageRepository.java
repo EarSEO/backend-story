@@ -7,10 +7,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
 
 public interface StoryImageRepository extends JpaRepository<StoryImage, Long> {
-
-    @Query("SELECT si FROM StoryImage si WHERE si.story.id IN :storyIds ORDER BY si.story.id, si.createdAt")
+    @Query("""
+        SELECT si
+        FROM StoryImage si
+        WHERE si.story.id IN :storyIds
+        ORDER BY si.story.id, si.id
+        """)
     List<StoryImage> findByStoryIdIn(@Param("storyIds") List<Long> storyIds);
 
     // 수정 시 이미지 확인용
