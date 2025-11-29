@@ -47,4 +47,26 @@ public class Story {
     private LocalDateTime createdAt;
     @LastModifiedDate
     private LocalDateTime updatedAt;
+
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
+    public void updateStory(StoryTitle newTitle, String newContent, StoryConcept newConcept) {
+        if (newTitle != null) {
+            this.storyTitle = newTitle;
+        }
+        if (newContent != null) {
+            this.content = newContent;
+        }
+        if (newConcept != null) {
+            this.storyConcept = newConcept;
+        }
+    }
 }

@@ -3,7 +3,9 @@ package com.earseo.story.service;
 import ch.hsr.geohash.GeoHash;
 import ch.hsr.geohash.WGS84Point;
 import com.earseo.story.common.exception.BaseException;
+import com.earseo.story.common.exception.StorySpotError;
 import com.earseo.story.dto.request.CreateRequest;
+import com.earseo.story.dto.request.UpdateStoryRequest;
 import com.earseo.story.dto.response.*;
 import com.earseo.story.entity.*;
 import com.earseo.story.entity.Locale;
@@ -48,6 +50,7 @@ public class StoryService {
     private final StoryTitleRepository storyTitleRepository;
     private final SpotTitleAggregateRepository spotTitleAggregateRepository;
     private final StorySpotSummaryRepository storySpotSummaryRepository;
+    private final LikeService likeService;
 
     @Transactional
     public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
@@ -233,6 +236,137 @@ public class StoryService {
         return SearchSpotInfoList.toDto(responses);
     }
 
+    @Transactional(readOnly = true)
+    public MyStoryListResponse getMyStories(Long memberId, Long lastStoryId, int size) {
+        // size + 1개 조회해서 hasNext 판단
+        Pageable pageable = PageRequest.of(0, size + 1);
+
+        List<Story> stories;
+        if (lastStoryId == null) {
+            // 첫 조회
+            stories = storyRepository.findByStoryAuthorIdOrderByIdDesc(memberId, pageable);
+        } else {
+            // 이후 조회
+            stories = storyRepository.findByStoryAuthorIdAndIdLessThanOrderByIdDesc(memberId, lastStoryId, pageable);
+        }
+
+        // hasNext 판단
+        boolean hasNext = stories.size() > size;
+        if (hasNext) {
+            stories = stories.subList(0, size); // 실제 size만큼만 반환
+        }
+
+        // 이미지 조회 (N+1 방지)
+        List<Long> storyIds = stories.stream()
+                .map(Story::getId)
+                .toList();
+
+        Map<Long, List<String>> imageUrlMap = Map.of();
+        if (!storyIds.isEmpty()) {
+            List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+            imageUrlMap = storyImages.stream()
+                    .collect(Collectors.groupingBy(
+                            si -> si.getStory().getId(),
+                            Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                    ));
+        }
+
+        return MyStoryListResponse.toDto(stories, imageUrlMap, hasNext);
+    }
+
+    @Transactional
+    public ToggleLikeResponse toggleLike(Long storyId, Long memberId) {
+        boolean isLiked = likeService.toggleLike(storyId, memberId);
+        Long likeCount = likeService.getLikeCount(storyId);
+        return new ToggleLikeResponse(isLiked, likeCount);
+    }
+
+    @Transactional
+    public UpdateStoryResponse updateStory(Long storyId, Long memberId, UpdateStoryRequest request, List<MultipartFile> newImages) {
+        // Story 조회 및 작성자 검증
+        Story story = storyRepository.findById(storyId)
+                .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
+
+        if (!story.getStoryAuthor().getId().equals(memberId)) {
+            throw new BaseException(STORY_NOT_OWNER);
+        }
+
+        // 제목 변경 처리
+        if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
+            // 기존 제목 카운트 감소
+            spotTitleAggregateRepository.decrementOrDelete(
+                    story.getStorySpot().getId(),
+                    story.getStoryTitle().getId()
+            );
+
+            // 새 제목 조회 또는 생성
+            StoryTitle newTitle = storyTitleRepository.findByTitle(request.title())
+                    .orElseGet(() -> storyTitleRepository.save(
+                            StoryTitle.builder()
+                                    .title(request.title())
+                                    .build()
+                    ));
+
+            // 새 제목 카운트 증가
+            spotTitleAggregateRepository.incrementOrCreate(
+                    story.getStorySpot().getId(),
+                    newTitle.getId()
+            );
+
+        }
+
+        // 내용/컨셉 변경
+        String newContent = request.content() != null ? request.content() : story.getContent();
+        StoryConcept newConcept = request.storyConcept() != null ? request.storyConcept() : story.getStoryConcept();
+
+        // 이미지 처리
+        List<StoryImage> existingImages = storyImageRepository.findByStoryId(storyId);
+        List<String> keepUrls = request.keepImageUrls() != null ? request.keepImageUrls() : List.of();
+
+        // 삭제할 이미지 S3에서 제거
+        existingImages.stream()
+                .filter(img -> !keepUrls.contains(img.getImageUrl()))
+                .forEach(img -> {
+                    try {
+                        s3Service.deleteFile(img.getImageUrl());
+                    } catch (Exception e) {
+                        log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
+                    }
+                });
+
+        // DB에서 삭제
+        if (!keepUrls.isEmpty()) {
+            storyImageRepository.deleteByStoryIdAndImageUrlNotIn(storyId, keepUrls);
+        } else {
+            // keepUrls가 비어있으면 모든 이미지 삭제
+            storyImageRepository.deleteAll(existingImages);
+        }
+
+        // 새 이미지 업로드 및 저장
+        int currentImageCount = keepUrls.size();
+        if (newImages != null && !newImages.isEmpty()) {
+            if (currentImageCount + newImages.size() > 3) {
+                throw new BaseException(STORY_IMAGE_TOO_MANY);
+            }
+
+            List<StoryImage> newStoryImages = getImageList(
+                    newImages,
+                    story.getStorySpot().getGeohash(),
+                    story
+            );
+            storyImageRepository.saveAll(newStoryImages);
+        }
+
+        // Story 엔티티 업데이트
+        StoryTitle titleToUpdate = null;
+        if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
+            titleToUpdate = storyTitleRepository.findByTitle(request.title()).orElseThrow();
+        }
+        story.updateStory(titleToUpdate, newContent, newConcept);
+
+        return new UpdateStoryResponse(story.getId(), story.getUpdatedAt());
+    }
+
     public SpotTotalInfoResponse getSpotTotalInfo(
         Long storySpotId,
         Double longitude,
@@ -242,7 +376,7 @@ public class StoryService {
     ) {
         // 스팟 정보
         StorySpotWithDistanceProjection storySpot = storySpotRepository.findByIdWithDistance(storySpotId, longitude, latitude)
-            .orElseThrow(() -> new BaseException(STORY_SPOT_NOT_FOUND));
+            .orElseThrow(() -> new BaseException(StorySpotError.STORY_SPOT_NOT_FOUND));
 
         // 상위 4개 제목
         List<SpotTitleAggregate> topTitles = spotTitleAggregateRepository.findTopTitleBySpotId(
