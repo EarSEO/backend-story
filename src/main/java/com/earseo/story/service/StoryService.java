@@ -29,7 +29,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.earseo.story.common.exception.StoryError.*;
-import static com.earseo.story.common.exception.StorySpotError.STORY_SPOT_NOT_FOUND;
 
 @Slf4j
 @Service
@@ -258,17 +257,17 @@ public class StoryService {
 
         // 이미지 조회 (N+1 방지)
         List<Long> storyIds = stories.stream()
-                .map(Story::getId)
-                .toList();
+            .map(Story::getId)
+            .toList();
 
         Map<Long, List<String>> imageUrlMap = Map.of();
         if (!storyIds.isEmpty()) {
             List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
             imageUrlMap = storyImages.stream()
-                    .collect(Collectors.groupingBy(
-                            si -> si.getStory().getId(),
-                            Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
-                    ));
+                .collect(Collectors.groupingBy(
+                    si -> si.getStory().getId(),
+                    Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                ));
         }
 
         return MyStoryListResponse.toDto(stories, imageUrlMap, hasNext);
@@ -285,7 +284,7 @@ public class StoryService {
     public UpdateStoryResponse updateStory(Long storyId, Long memberId, UpdateStoryRequest request, List<MultipartFile> newImages) {
         // Story 조회 및 작성자 검증
         Story story = storyRepository.findById(storyId)
-                .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
+            .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
 
         if (!story.getStoryAuthor().getId().equals(memberId)) {
             throw new BaseException(STORY_NOT_OWNER);
@@ -295,22 +294,22 @@ public class StoryService {
         if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
             // 기존 제목 카운트 감소
             spotTitleAggregateRepository.decrementOrDelete(
-                    story.getStorySpot().getId(),
-                    story.getStoryTitle().getId()
+                story.getStorySpot().getId(),
+                story.getStoryTitle().getId()
             );
 
             // 새 제목 조회 또는 생성
             StoryTitle newTitle = storyTitleRepository.findByTitle(request.title())
-                    .orElseGet(() -> storyTitleRepository.save(
-                            StoryTitle.builder()
-                                    .title(request.title())
-                                    .build()
-                    ));
+                .orElseGet(() -> storyTitleRepository.save(
+                    StoryTitle.builder()
+                        .title(request.title())
+                        .build()
+                ));
 
             // 새 제목 카운트 증가
             spotTitleAggregateRepository.incrementOrCreate(
-                    story.getStorySpot().getId(),
-                    newTitle.getId()
+                story.getStorySpot().getId(),
+                newTitle.getId()
             );
 
         }
@@ -325,14 +324,14 @@ public class StoryService {
 
         // 삭제할 이미지 S3에서 제거
         existingImages.stream()
-                .filter(img -> !keepUrls.contains(img.getImageUrl()))
-                .forEach(img -> {
-                    try {
-                        s3Service.deleteFile(img.getImageUrl());
-                    } catch (Exception e) {
-                        log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
-                    }
-                });
+            .filter(img -> !keepUrls.contains(img.getImageUrl()))
+            .forEach(img -> {
+                try {
+                    s3Service.deleteFile(img.getImageUrl());
+                } catch (Exception e) {
+                    log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
+                }
+            });
 
         // DB에서 삭제
         if (!keepUrls.isEmpty()) {
@@ -350,9 +349,9 @@ public class StoryService {
             }
 
             List<StoryImage> newStoryImages = getImageList(
-                    newImages,
-                    story.getStorySpot().getGeohash(),
-                    story
+                newImages,
+                story.getStorySpot().getGeohash(),
+                story
             );
             storyImageRepository.saveAll(newStoryImages);
         }
@@ -411,6 +410,38 @@ public class StoryService {
     public SpotStoryPageResponse getSpotStorieSlice(Long storySpotId, Pageable pageable) {
         // 이야기 목록
         Slice<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(storySpotId, pageable);
+
+        // 이미지 조회
+        List<Long> storyIds = storyPage.getContent().stream()
+            .map(Story::getId)
+            .toList();
+        List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+
+        Map<Long, List<String>> imageUrlsMap = storyImages.stream()
+            .collect(Collectors.groupingBy(
+                image -> image.getStory().getId(),
+                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+            ));
+        return SpotStoryPageResponse.toDto(storyPage, imageUrlsMap);
+    }
+
+    public SpotStoryPageResponse getStoriesRectangleMapInfoList(
+        Double minLongitude,
+        Double minLatitude,
+        Double maxLongitude,
+        Double maxLatitude,
+        Pageable pageable
+    ) {
+        if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
+            throw new BaseException(INVALID_COORDINATE_RANGE);
+        }
+
+        List<Long> storySpotIdList = storySpotRepository.findByBoundingBox(
+            minLongitude, minLatitude, maxLongitude, maxLatitude
+        ).stream().map(StorySpot::getId).toList();
+
+        // 이야기 목록
+        Slice<Story> storyPage = storyRepository.findByStorySpotIdList(storySpotIdList, pageable);
 
         // 이미지 조회
         List<Long> storyIds = storyPage.getContent().stream()
