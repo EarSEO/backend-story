@@ -1,17 +1,29 @@
 package com.earseo.story.service;
 
+import com.earseo.story.dto.request.GetRouteListSpotRequest;
+import com.earseo.story.dto.request.PathLineStringRequest;
+import com.earseo.story.dto.request.PointRequest;
+import com.earseo.story.dto.response.GetRouteListSpotResponse;
+import com.earseo.story.dto.response.GetRouteSpotResponse;
 import com.earseo.story.entity.Locale;
 import com.earseo.story.entity.Story;
 import com.earseo.story.entity.StoryConcept;
 import com.earseo.story.repository.StoryJdbcRepository;
 import com.earseo.story.repository.StorySpotSummaryJdbcRepository;
 import com.earseo.story.repository.StorySpotSummaryJdbcRepository.SpotSummarySaveRequest;
+import com.earseo.story.repository.StorySpotSummaryRepository;
+import com.earseo.story.repository.projectionDto.StorySpotWithSummaryProjection;
 import com.earseo.story.service.OpenAiService.SpotSummaryResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,9 +39,15 @@ public class StorySpotSummaryService {
     @Value("${summary.story-summary.threshold}")
     private int STORY_SUMMARY_THRESHOLD;
 
+    private static final int SRID_WGS84 = 4326;
+    private static final GeometryFactory GEOMETRY_FACTORY =
+        new GeometryFactory(new PrecisionModel(), SRID_WGS84);
+    private static final Random SingletonRandom = new Random();
+
     private final OpenAiService openAiService;
     private final StoryJdbcRepository storyJDBCRepository;
     private final StorySpotSummaryJdbcRepository storySpotSummaryJDBCRepository;
+    private final StorySpotSummaryRepository storySpotSummaryRepository;
 
     @Scheduled(cron = "${summary.schedule.cron}")
     public void createSummariesScheduled() {
@@ -107,5 +125,67 @@ public class StorySpotSummaryService {
             .batchUpsert(spotSummarySaveRequests);
 
         log.info("{} Summary Created", insertedSummaryCnt);
+    }
+
+    @Transactional(readOnly = true)
+    public GetRouteListSpotResponse getPathsSpotList(GetRouteListSpotRequest request) {
+        Long meters = request.meters() != null ? request.meters() : 50L;
+
+        List<List<GetRouteSpotResponse>> spotList = request.paths().stream()
+            .map(path -> processPath(path, meters, request.storyConcept()))
+            .toList();
+
+        return GetRouteListSpotResponse.toDto(spotList);
+    }
+
+    private List<GetRouteSpotResponse> processPath(
+        PathLineStringRequest pathRequest,
+        Long meters,
+        StoryConcept requestedConcept
+    ) {
+        // 유효성 검증
+        if (pathRequest.lineString() == null || pathRequest.lineString().size() < 2 || pathRequest.amount() <= 0) {
+            return List.of();
+        }
+
+        // LineString 생성
+        LineString lineString = buildJTSLineString(pathRequest.lineString());
+
+        // 컨셉이 null이면 가공
+        StoryConcept selectedConcept = requestedConcept != null
+            ? requestedConcept
+            : getRandomConcept();
+
+        // 한방 쿼리
+        List<StorySpotWithSummaryProjection> spotsWithSummaries =
+            storySpotSummaryRepository.findSpotsNearPathWithSummaries(
+                lineString,
+                meters,
+                Locale.KO.name(),
+                selectedConcept.name(),
+                pathRequest.amount()
+            );
+
+        if (spotsWithSummaries.isEmpty()) {
+            return List.of();
+        }
+
+        // 가장 가까운것 반환
+        return spotsWithSummaries.stream().map(GetRouteSpotResponse::toDto).toList();
+    }
+
+    private StoryConcept getRandomConcept() {
+        StoryConcept[] concepts = StoryConcept.values();
+        return concepts[new Random().nextInt(concepts.length)];
+    }
+
+    private LineString buildJTSLineString(List<PointRequest> points) {
+        Coordinate[] coordinates = points.stream()
+            .map(point -> new Coordinate(point.longitude(), point.latitude()))
+            .toArray(Coordinate[]::new);
+
+        LineString lineString = GEOMETRY_FACTORY.createLineString(coordinates);
+        lineString.setSRID(SRID_WGS84);
+        return lineString;
     }
 }
