@@ -104,7 +104,7 @@ public class StoryUserController {
             )
         )
     })
-    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/create", consumes = "application/octet-stream")
     public ResponseEntity<BaseResponse<CreateResponse>> createStory(
         @Parameter(description = "사용자 ID", required = true)
         @RequestHeader("X-USER-ID") Long memberId,
