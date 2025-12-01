@@ -54,7 +54,7 @@ public class StoryService {
     @Transactional
     public CreateResponse createStory(Long memberId, CreateRequest body) {
         // 사용자 검증
-        if (!memberId.equals(body.authorId())) throw new BaseException(ITS_NOT_YOU);
+//        if (!memberId.equals(body.authorId())) throw new BaseException(ITS_NOT_YOU);
         StoryAuthor storyAuthor = storyAuthorRepository.findById(body.authorId())
                 .orElseGet(() ->
                         storyAuthorRepository.save(
