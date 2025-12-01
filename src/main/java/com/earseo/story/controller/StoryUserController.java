@@ -35,89 +35,103 @@ import static com.earseo.story.common.exception.StoryError.STORY_IMAGE_TOO_MANY;
 public class StoryUserController {
     private final StoryService storyService;
 
-    @Operation(
-            summary = "이야기 생성",
-            description = """
-                    사용자가 새로운 이야기를 작성합니다.
-                    - 위치 정보(위도/경도)를 기반으로 GeoHash를 생성하여 이야기 스팟에 저장합니다.
-                    - 최대 3개의 이미지를 함께 업로드할 수 있습니다.
-                    """
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "이야기 생성 성공",
-                    content = @Content(schema = @Schema(implementation = CreateResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "잘못된 요청",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = {
-                                    @ExampleObject(
-                                            name = "이미지 개수 초과",
-                                            value = """
-                                                    {
-                                                        "status": "STR001",
-                                                        "message": "이야기의 사진은 3개 이하여야 합니다.",
-                                                        "data": null
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "이미지 업로드 실패",
-                                            value = """
-                                                    {
-                                                        "status": "STR003",
-                                                        "message": "이미지 업로드 중 오류가 발생했습니다.",
-                                                        "data": null
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "유효성 검증 실패",
-                                            value = """
-                                                    {
-                                                      "status": "ARGUMENT_ERROR",
-                                                      "message": "경도는 124 이상이어야 합니다",
-                                                      "data": null
-                                                    }
-                                                    """
-                                    )
-                            }
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "인증 오류",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            examples = @ExampleObject(
-                                    name = "사용자 불일치",
-                                    value = """
-                                            {
-                                                "status": "STR002",
-                                                "message": "jwt 사용자와 입력 정보가 불일치 합니다.",
-                                                "data": null
-                                            }
-                                            """
-                            )
-                    )
-            )
-    })
-    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<BaseResponse<CreateResponse>> createStory(
-            @Parameter(description = "사용자 ID", required = true)
-            @RequestHeader("X-USER-ID") Long memberId,
-            @RequestPart("body") String body,
-            @RequestPart(required = false) List<MultipartFile> images
-    ) throws JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        CreateRequest request = objectMapper.readValue(body, CreateRequest.class);
-        if (images != null && images.size() > 3) throw new BaseException(STORY_IMAGE_TOO_MANY);
-        return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, request, images)));
+    @PostMapping("/create")
+    public ResponseEntity<BaseResponse<CreateResponse>> createStory(@RequestBody CreateRequest body, @RequestHeader("X-USER-ID") Long memberId) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, body)));
     }
+
+    @PostMapping("/image/{id}")
+    public ResponseEntity<BaseResponse<CreateResponse>> saveImages(@RequestParam("images") List<MultipartFile> images,
+                                                                   @RequestHeader("X-USER-ID") Long memberId,
+                                                                   @PathVariable("id") Long storyId) {
+        return ResponseEntity.ok(BaseResponse.ok(storyService.saveImages(images, memberId, storyId)));
+    }
+
+//    @Operation(
+//            summary = "이야기 생성",
+//            description = """
+//                    사용자가 새로운 이야기를 작성합니다.
+//                    - 위치 정보(위도/경도)를 기반으로 GeoHash를 생성하여 이야기 스팟에 저장합니다.
+//                    - 최대 3개의 이미지를 함께 업로드할 수 있습니다.
+//                    """
+//    )
+//    @ApiResponses({
+//            @ApiResponse(
+//                    responseCode = "200",
+//                    description = "이야기 생성 성공",
+//                    content = @Content(schema = @Schema(implementation = CreateResponse.class))
+//            ),
+//            @ApiResponse(
+//                    responseCode = "400",
+//                    description = "잘못된 요청",
+//                    content = @Content(
+//                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+//                            examples = {
+//                                    @ExampleObject(
+//                                            name = "이미지 개수 초과",
+//                                            value = """
+//                                                    {
+//                                                        "status": "STR001",
+//                                                        "message": "이야기의 사진은 3개 이하여야 합니다.",
+//                                                        "data": null
+//                                                    }
+//                                                    """
+//                                    ),
+//                                    @ExampleObject(
+//                                            name = "이미지 업로드 실패",
+//                                            value = """
+//                                                    {
+//                                                        "status": "STR003",
+//                                                        "message": "이미지 업로드 중 오류가 발생했습니다.",
+//                                                        "data": null
+//                                                    }
+//                                                    """
+//                                    ),
+//                                    @ExampleObject(
+//                                            name = "유효성 검증 실패",
+//                                            value = """
+//                                                    {
+//                                                      "status": "ARGUMENT_ERROR",
+//                                                      "message": "경도는 124 이상이어야 합니다",
+//                                                      "data": null
+//                                                    }
+//                                                    """
+//                                    )
+//                            }
+//                    )
+//            ),
+//            @ApiResponse(
+//                    responseCode = "409",
+//                    description = "인증 오류",
+//                    content = @Content(
+//                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+//                            examples = @ExampleObject(
+//                                    name = "사용자 불일치",
+//                                    value = """
+//                                            {
+//                                                "status": "STR002",
+//                                                "message": "jwt 사용자와 입력 정보가 불일치 합니다.",
+//                                                "data": null
+//                                            }
+//                                            """
+//                            )
+//                    )
+//            )
+//    })
+    ////    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ////    public ResponseEntity<BaseResponse<CreateResponse>> createStory(
+    ////            @Parameter(description = "사용자 ID", required = true)
+    ////            @RequestHeader("X-USER-ID") Long memberId,
+    ////            @RequestPart("body") String body,
+    ////            @RequestPart(required = false) List<MultipartFile> images
+    ////    ) throws JsonProcessingException {
+    ////        ObjectMapper objectMapper = new ObjectMapper();
+    ////        CreateRequest request = objectMapper.readValue(body, CreateRequest.class);
+    ////        if (images != null && images.size() > 3) throw new BaseException(STORY_IMAGE_TOO_MANY);
+    ////        return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, request, images)));
+    ////    }
+    ///
+    ///
 
     @Operation(
             summary = "나의 이야기 목록 조회",
