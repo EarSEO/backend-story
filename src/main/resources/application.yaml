@@ -30,6 +30,8 @@ summary:
     threshold: ${STORY_SUMMARY_THRESHOLD:3}
   schedule:
     cron: ${SUMMARY_SCHEDULE_CRON:0 0 0,6,12,18 * * *}
+distance:
+  path-to-spot: ${DISTANCE_PATH_TO_SPOT:200}
 openai:
   credential:
     access-key: ${CREDENTIAL_OPENAI_ACCESS_KEY:}

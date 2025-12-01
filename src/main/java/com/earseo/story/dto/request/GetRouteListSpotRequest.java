@@ -22,12 +22,11 @@ public record GetRouteListSpotRequest(
     StoryConcept storyConcept,
     @Schema(
         description = "탐색을 할 요약이 있는 스팟의 경로로 부터 떨어진 최대 거리",
-        example = "50",
-        defaultValue = "50",
+        example = "200",
         minimum = "5",
-        maximum = "1000",
+        maximum = "2000",
         requiredMode = Schema.RequiredMode.NOT_REQUIRED
     )
-    Long meters
+    Integer meters
 ) {
 }
