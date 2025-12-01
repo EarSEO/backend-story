@@ -37,7 +37,7 @@ public class StoryService {
     private static final int GEOHASH_PRECISION = 9;
     private static final int SRID_WGS84 = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY =
-        new GeometryFactory(new PrecisionModel(), SRID_WGS84);
+            new GeometryFactory(new PrecisionModel(), SRID_WGS84);
     private static final String STORY_S3_PATH_FORMAT = "story/%s/%d";
     private static final int STORY_SPOT_CANDIDATE_TITLE_LIMIT = 4;
 
@@ -52,24 +52,24 @@ public class StoryService {
     private final LikeService likeService;
 
     @Transactional
-    public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
+    public CreateResponse createStory(Long memberId, CreateRequest body) {
         // 사용자 검증
         if (!memberId.equals(body.authorId())) throw new BaseException(ITS_NOT_YOU);
         StoryAuthor storyAuthor = storyAuthorRepository.findById(body.authorId())
-            .orElseGet(() ->
-                storyAuthorRepository.save(
-                    StoryAuthor.builder()
-                        .id(body.authorId())
-                        .nickname(body.authorName())
-                        .profileUrl(body.authorProfileUrl())
-                        .updatedAt(body.authorProfileUpdatedAt())
-                        .build()
-                )
-            );
+                .orElseGet(() ->
+                        storyAuthorRepository.save(
+                                StoryAuthor.builder()
+                                        .id(body.authorId())
+                                        .nickname(body.authorName())
+                                        .profileUrl(body.authorProfileUrl())
+                                        .updatedAt(body.authorProfileUpdatedAt())
+                                        .build()
+                        )
+                );
         // 서버의 정보보다 새로운 정보가 있고, 실제로 변경사항이 있을 때만 업데이트
         if (storyAuthor.getUpdatedAt().isBefore(body.authorProfileUpdatedAt()) &&
-            (!Objects.equals(storyAuthor.getNickname(), body.authorName()) ||
-             !Objects.equals(storyAuthor.getProfileUrl(), body.authorProfileUrl()))) {
+                (!Objects.equals(storyAuthor.getNickname(), body.authorName()) ||
+                        !Objects.equals(storyAuthor.getProfileUrl(), body.authorProfileUrl()))) {
             storyAuthor.updateAuthor(body.authorName(), body.authorProfileUrl(), body.authorProfileUpdatedAt());
         }
         // GeoHash 처리
@@ -77,35 +77,45 @@ public class StoryService {
         Point centerPoint = getGeohashCenterPoint(body.longitude(), body.latitude());
         Point storyPoint = createPoint(body.longitude(), body.latitude());
         StorySpot geohashedSpot = storySpotRepository.findByGeohash(spotGeoHash)
-            .orElseGet(() ->
-                storySpotRepository.save(
-                    StorySpot.builder()
-                        .geohash(spotGeoHash)
-                        .center(centerPoint)
-                        .build()
-                )
-            );
+                .orElseGet(() ->
+                        storySpotRepository.save(
+                                StorySpot.builder()
+                                        .geohash(spotGeoHash)
+                                        .center(centerPoint)
+                                        .build()
+                        )
+                );
         // 이야기 타이틀 조회
         StoryTitle storyTitle = storyTitleRepository.findByTitle(body.title())
-            .orElseGet(() ->
-                storyTitleRepository.save(
-                    StoryTitle.builder()
-                        .title(body.title())
-                        .build()
-                )
-            );
+                .orElseGet(() ->
+                        storyTitleRepository.save(
+                                StoryTitle.builder()
+                                        .title(body.title())
+                                        .build()
+                        )
+                );
         // 이야기 저장
         Story story = storyRepository.save(Story.builder()
-            .storySpot(geohashedSpot)
-            .storyAuthor(storyAuthor)
-            .point(storyPoint)
-            .storyTitle(storyTitle)
-            .content(body.content())
-            .locale(body.locale())
-            .storyConcept(body.storyConcept())
-            .build());
+                .storySpot(geohashedSpot)
+                .storyAuthor(storyAuthor)
+                .point(storyPoint)
+                .storyTitle(storyTitle)
+                .content(body.content())
+                .locale(body.locale())
+                .storyConcept(body.storyConcept())
+                .build());
         // 제목 집계 테이블 최신화
         spotTitleAggregateRepository.incrementOrCreate(geohashedSpot.getId(), storyTitle.getId());
+
+        return CreateResponse.toDto(story);
+    }
+
+    @Transactional
+    public CreateResponse saveImages(List<MultipartFile> images,Long memberId, Long storyId){
+        Story story = storyRepository.findById(storyId).orElseThrow(()-> new BaseException(STORY_NOT_FOUND));
+        if(story.getStoryAuthor().getId() != memberId) throw new BaseException(ITS_NOT_YOU);
+
+        String spotGeoHash = story.getStorySpot().getGeohash();
         // 파일 저장
         if (images != null && !images.isEmpty()) {
             List<StoryImage> storyImages = getImageList(images, spotGeoHash, story);
@@ -153,9 +163,9 @@ public class StoryService {
                 String imageUrl = s3Service.uploadFile(image, String.format(STORY_S3_PATH_FORMAT, spotGeoHash, story.getId()));
                 // StoryImage 엔티티 생성
                 StoryImage storyImage = StoryImage.builder()
-                    .story(story)
-                    .imageUrl(imageUrl)
-                    .build();
+                        .story(story)
+                        .imageUrl(imageUrl)
+                        .build();
                 storyImages.add(storyImage);
             } catch (Exception e) {
                 // 업로드 실패 시 이미 업로드된 이미지들 롤백
@@ -187,21 +197,21 @@ public class StoryService {
             return LocationSpotBriefInfoResponse.toDto(null, List.of());
         }
         return LocationSpotBriefInfoResponse.toDto(
-            storySpot.get().getId(),
-            spotTitleAggregateRepository.findTopTitleBySpotId(storySpot.get().getId(), Pageable.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT))
+                storySpot.get().getId(),
+                spotTitleAggregateRepository.findTopTitleBySpotId(storySpot.get().getId(), Pageable.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT))
         );
     }
 
     public MapSpotInfoList getRectangleMapInfoList(
-        Double minLongitude, Double minLatitude,
-        Double maxLongitude, Double maxLatitude
+            Double minLongitude, Double minLatitude,
+            Double maxLongitude, Double maxLatitude
     ) {
         if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
             throw new BaseException(INVALID_COORDINATE_RANGE);
         }
 
         List<StorySpot> spots = storySpotRepository.findByBoundingBox(
-            minLongitude, minLatitude, maxLongitude, maxLatitude
+                minLongitude, minLatitude, maxLongitude, maxLatitude
         );
         return MapSpotInfoList.toDto(spots);
     }
@@ -213,24 +223,24 @@ public class StoryService {
 
     @Transactional(readOnly = true)
     public SearchSpotInfoList searchTitleRectangle(
-        String keyword,
-        Double longitude, Double latitude,
-        Double minLongitude, Double minLatitude,
-        Double maxLongitude, Double maxLatitude,
-        int limit
+            String keyword,
+            Double longitude, Double latitude,
+            Double minLongitude, Double minLatitude,
+            Double maxLongitude, Double maxLatitude,
+            int limit
     ) {
         if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
             throw new BaseException(INVALID_COORDINATE_RANGE);
         }
         List<SearchSpotProjection> responses = spotTitleAggregateRepository.searchByTitleKeywordRectangle(
-            keyword,
-            longitude,
-            latitude,
-            minLongitude,
-            minLatitude,
-            maxLongitude,
-            maxLatitude,
-            limit
+                keyword,
+                longitude,
+                latitude,
+                minLongitude,
+                minLatitude,
+                maxLongitude,
+                maxLatitude,
+                limit
         );
         return SearchSpotInfoList.toDto(responses);
     }
@@ -257,17 +267,17 @@ public class StoryService {
 
         // 이미지 조회 (N+1 방지)
         List<Long> storyIds = stories.stream()
-            .map(Story::getId)
-            .toList();
+                .map(Story::getId)
+                .toList();
 
         Map<Long, List<String>> imageUrlMap = Map.of();
         if (!storyIds.isEmpty()) {
             List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
             imageUrlMap = storyImages.stream()
-                .collect(Collectors.groupingBy(
-                    si -> si.getStory().getId(),
-                    Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
-                ));
+                    .collect(Collectors.groupingBy(
+                            si -> si.getStory().getId(),
+                            Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                    ));
         }
 
         return MyStoryListResponse.toDto(stories, imageUrlMap, hasNext);
@@ -284,7 +294,7 @@ public class StoryService {
     public UpdateStoryResponse updateStory(Long storyId, Long memberId, UpdateStoryRequest request, List<MultipartFile> newImages) {
         // Story 조회 및 작성자 검증
         Story story = storyRepository.findById(storyId)
-            .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
+                .orElseThrow(() -> new BaseException(STORY_NOT_FOUND));
 
         if (!story.getStoryAuthor().getId().equals(memberId)) {
             throw new BaseException(STORY_NOT_OWNER);
@@ -294,22 +304,22 @@ public class StoryService {
         if (request.title() != null && !request.title().equals(story.getStoryTitle().getTitle())) {
             // 기존 제목 카운트 감소
             spotTitleAggregateRepository.decrementOrDelete(
-                story.getStorySpot().getId(),
-                story.getStoryTitle().getId()
+                    story.getStorySpot().getId(),
+                    story.getStoryTitle().getId()
             );
 
             // 새 제목 조회 또는 생성
             StoryTitle newTitle = storyTitleRepository.findByTitle(request.title())
-                .orElseGet(() -> storyTitleRepository.save(
-                    StoryTitle.builder()
-                        .title(request.title())
-                        .build()
-                ));
+                    .orElseGet(() -> storyTitleRepository.save(
+                            StoryTitle.builder()
+                                    .title(request.title())
+                                    .build()
+                    ));
 
             // 새 제목 카운트 증가
             spotTitleAggregateRepository.incrementOrCreate(
-                story.getStorySpot().getId(),
-                newTitle.getId()
+                    story.getStorySpot().getId(),
+                    newTitle.getId()
             );
 
         }
@@ -324,14 +334,14 @@ public class StoryService {
 
         // 삭제할 이미지 S3에서 제거
         existingImages.stream()
-            .filter(img -> !keepUrls.contains(img.getImageUrl()))
-            .forEach(img -> {
-                try {
-                    s3Service.deleteFile(img.getImageUrl());
-                } catch (Exception e) {
-                    log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
-                }
-            });
+                .filter(img -> !keepUrls.contains(img.getImageUrl()))
+                .forEach(img -> {
+                    try {
+                        s3Service.deleteFile(img.getImageUrl());
+                    } catch (Exception e) {
+                        log.error("이미지 삭제 실패: {}", img.getImageUrl(), e);
+                    }
+                });
 
         // DB에서 삭제
         if (!keepUrls.isEmpty()) {
@@ -349,9 +359,9 @@ public class StoryService {
             }
 
             List<StoryImage> newStoryImages = getImageList(
-                newImages,
-                story.getStorySpot().getGeohash(),
-                story
+                    newImages,
+                    story.getStorySpot().getGeohash(),
+                    story
             );
             storyImageRepository.saveAll(newStoryImages);
         }
@@ -367,42 +377,42 @@ public class StoryService {
     }
 
     public SpotTotalInfoResponse getSpotTotalInfo(
-        Long storySpotId,
-        Double longitude,
-        Double latitude,
-        Locale locale,
-        Pageable pageable
+            Long storySpotId,
+            Double longitude,
+            Double latitude,
+            Locale locale,
+            Pageable pageable
     ) {
         // 스팟 정보
         StorySpotWithDistanceProjection storySpot = storySpotRepository.findByIdWithDistance(storySpotId, longitude, latitude)
-            .orElseThrow(() -> new BaseException(StorySpotError.STORY_SPOT_NOT_FOUND));
+                .orElseThrow(() -> new BaseException(StorySpotError.STORY_SPOT_NOT_FOUND));
 
         // 상위 4개 제목
         List<SpotTitleAggregate> topTitles = spotTitleAggregateRepository.findTopTitleBySpotId(
-            storySpotId,
-            PageRequest.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT)
+                storySpotId,
+                PageRequest.ofSize(STORY_SPOT_CANDIDATE_TITLE_LIMIT)
         );
 
         // 이야기 목록
         Slice<Story> storyPage = storyRepository.findByStorySpotIdAndLocale(
-            storySpotId, pageable
+                storySpotId, pageable
         );
 
         // 이미지 조회
         List<Long> storyIds = storyPage.getContent().stream()
-            .map(Story::getId)
-            .toList();
+                .map(Story::getId)
+                .toList();
         List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
 
         Map<Long, List<String>> imageUrlsMap = storyImages.stream()
-            .collect(Collectors.groupingBy(
-                image -> image.getStory().getId(),
-                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
-            ));
+                .collect(Collectors.groupingBy(
+                        image -> image.getStory().getId(),
+                        Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                ));
 
         // 요약 목록
         List<StorySpotSummary> summaries = storySpotSummaryRepository
-            .findByStorySpotIdAndLocale(storySpotId, locale);
+                .findByStorySpotIdAndLocale(storySpotId, locale);
 
         return SpotTotalInfoResponse.toDto(storySpot, topTitles, storyPage, imageUrlsMap, summaries);
     }
@@ -413,31 +423,31 @@ public class StoryService {
 
         // 이미지 조회
         List<Long> storyIds = storyPage.getContent().stream()
-            .map(Story::getId)
-            .toList();
+                .map(Story::getId)
+                .toList();
         List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
 
         Map<Long, List<String>> imageUrlsMap = storyImages.stream()
-            .collect(Collectors.groupingBy(
-                image -> image.getStory().getId(),
-                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
-            ));
+                .collect(Collectors.groupingBy(
+                        image -> image.getStory().getId(),
+                        Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                ));
         return SpotStoryPageResponse.toDto(storyPage, imageUrlsMap);
     }
 
     public SpotStoryPageResponse getStoriesRectangleMapInfoList(
-        Double minLongitude,
-        Double minLatitude,
-        Double maxLongitude,
-        Double maxLatitude,
-        Pageable pageable
+            Double minLongitude,
+            Double minLatitude,
+            Double maxLongitude,
+            Double maxLatitude,
+            Pageable pageable
     ) {
         if (minLongitude >= maxLongitude || minLatitude >= maxLatitude) {
             throw new BaseException(INVALID_COORDINATE_RANGE);
         }
 
         List<Long> storySpotIdList = storySpotRepository.findByBoundingBox(
-            minLongitude, minLatitude, maxLongitude, maxLatitude
+                minLongitude, minLatitude, maxLongitude, maxLatitude
         ).stream().map(StorySpot::getId).toList();
 
         // 이야기 목록
@@ -445,15 +455,15 @@ public class StoryService {
 
         // 이미지 조회
         List<Long> storyIds = storyPage.getContent().stream()
-            .map(Story::getId)
-            .toList();
+                .map(Story::getId)
+                .toList();
         List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
 
         Map<Long, List<String>> imageUrlsMap = storyImages.stream()
-            .collect(Collectors.groupingBy(
-                image -> image.getStory().getId(),
-                Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
-            ));
+                .collect(Collectors.groupingBy(
+                        image -> image.getStory().getId(),
+                        Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                ));
         return SpotStoryPageResponse.toDto(storyPage, imageUrlsMap);
     }
 }
