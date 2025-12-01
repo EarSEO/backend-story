@@ -9,6 +9,8 @@ import com.earseo.story.dto.response.MyStoryListResponse;
 import com.earseo.story.dto.response.ToggleLikeResponse;
 import com.earseo.story.dto.response.UpdateStoryResponse;
 import com.earseo.story.service.StoryService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,106 +36,98 @@ public class StoryUserController {
     private final StoryService storyService;
 
     @Operation(
-        summary = "이야기 생성",
-        description = """
-            사용자가 새로운 이야기를 작성합니다.
-            - 위치 정보(위도/경도)를 기반으로 GeoHash를 생성하여 이야기 스팟에 저장합니다.
-            - 최대 3개의 이미지를 함께 업로드할 수 있습니다.
-            """
+            summary = "이야기 생성",
+            description = """
+                    사용자가 새로운 이야기를 작성합니다.
+                    - 위치 정보(위도/경도)를 기반으로 GeoHash를 생성하여 이야기 스팟에 저장합니다.
+                    - 최대 3개의 이미지를 함께 업로드할 수 있습니다.
+                    """
     )
     @ApiResponses({
-        @ApiResponse(
-            responseCode = "200",
-            description = "이야기 생성 성공",
-            content = @Content(schema = @Schema(implementation = CreateResponse.class))
-        ),
-        @ApiResponse(
-            responseCode = "400",
-            description = "잘못된 요청",
-            content = @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples = {
-                    @ExampleObject(
-                        name = "이미지 개수 초과",
-                        value = """
-                            {
-                                "status": "STR001",
-                                "message": "이야기의 사진은 3개 이하여야 합니다.",
-                                "data": null
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이야기 생성 성공",
+                    content = @Content(schema = @Schema(implementation = CreateResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = {
+                                    @ExampleObject(
+                                            name = "이미지 개수 초과",
+                                            value = """
+                                                    {
+                                                        "status": "STR001",
+                                                        "message": "이야기의 사진은 3개 이하여야 합니다.",
+                                                        "data": null
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "이미지 업로드 실패",
+                                            value = """
+                                                    {
+                                                        "status": "STR003",
+                                                        "message": "이미지 업로드 중 오류가 발생했습니다.",
+                                                        "data": null
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "유효성 검증 실패",
+                                            value = """
+                                                    {
+                                                      "status": "ARGUMENT_ERROR",
+                                                      "message": "경도는 124 이상이어야 합니다",
+                                                      "data": null
+                                                    }
+                                                    """
+                                    )
                             }
-                            """
-                    ),
-                    @ExampleObject(
-                        name = "이미지 업로드 실패",
-                        value = """
-                            {
-                                "status": "STR003",
-                                "message": "이미지 업로드 중 오류가 발생했습니다.",
-                                "data": null
-                            }
-                            """
-                    ),
-                    @ExampleObject(
-                        name = "유효성 검증 실패",
-                        value = """
-                            {
-                              "status": "ARGUMENT_ERROR",
-                              "message": "경도는 124 이상이어야 합니다",
-                              "data": null
-                            }
-                            """
                     )
-                }
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "인증 오류",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(
+                                    name = "사용자 불일치",
+                                    value = """
+                                            {
+                                                "status": "STR002",
+                                                "message": "jwt 사용자와 입력 정보가 불일치 합니다.",
+                                                "data": null
+                                            }
+                                            """
+                            )
+                    )
             )
-        ),
-        @ApiResponse(
-            responseCode = "409",
-            description = "인증 오류",
-            content = @Content(
-                mediaType = MediaType.APPLICATION_JSON_VALUE,
-                examples = @ExampleObject(
-                    name = "사용자 불일치",
-                    value = """
-                        {
-                            "status": "STR002",
-                            "message": "jwt 사용자와 입력 정보가 불일치 합니다.",
-                            "data": null
-                        }
-                        """
-                )
-            )
-        )
     })
-    @PostMapping(value = "/create", consumes = "application/octet-stream")
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<BaseResponse<CreateResponse>> createStory(
-        @Parameter(description = "사용자 ID", required = true)
-        @RequestHeader("X-USER-ID") Long memberId,
-        @Parameter(
-            description = "이야기 생성 요청 바디",
-            required = true,
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
-        )
-        @Valid @RequestPart CreateRequest body,
-        @Parameter(
-            description = "이야기 이미지 파일 (최대 3개)",
-            required = false,
-            content = @Content(mediaType = MediaType.MULTIPART_FORM_DATA_VALUE)
-        )
-        @RequestPart(required = false) List<MultipartFile> images
-    ) {
+            @Parameter(description = "사용자 ID", required = true)
+            @RequestHeader("X-USER-ID") Long memberId,
+            @RequestPart("body") String body,
+            @RequestPart(required = false) List<MultipartFile> images
+    ) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        CreateRequest request = objectMapper.readValue(body, CreateRequest.class);
         if (images != null && images.size() > 3) throw new BaseException(STORY_IMAGE_TOO_MANY);
-        return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, body, images)));
+        return ResponseEntity.ok(BaseResponse.ok(storyService.createStory(memberId, request, images)));
     }
 
     @Operation(
             summary = "나의 이야기 목록 조회",
             description = """
-        로그인한 사용자가 작성한 이야기 목록을 최신순으로 조회합니다.
-        - 무한 스크롤 지원 (Cursor 기반 페이징)
-        - 첫 조회: lastStoryId 없이 호출
-        - 이후 조회: 이전 응답의 lastStoryId를 파라미터로 전달
-        - 이미지, 좋아요 개수, 위치 정보 포함
-        """
+                    로그인한 사용자가 작성한 이야기 목록을 최신순으로 조회합니다.
+                    - 무한 스크롤 지원 (Cursor 기반 페이징)
+                    - 첫 조회: lastStoryId 없이 호출
+                    - 이후 조회: 이전 응답의 lastStoryId를 파라미터로 전달
+                    - 이미지, 좋아요 개수, 위치 정보 포함
+                    """
     )
     @ApiResponses({
             @ApiResponse(
@@ -159,11 +153,11 @@ public class StoryUserController {
     @Operation(
             summary = "이야기 좋아요 토글",
             description = """
-        이야기에 좋아요를 추가하거나 취소합니다.
-        - 좋아요가 없으면 추가, 있으면 취소
-        - Redis 캐싱으로 성능 최적화
-        - 응답에 현재 좋아요 상태와 총 개수 포함
-        """
+                    이야기에 좋아요를 추가하거나 취소합니다.
+                    - 좋아요가 없으면 추가, 있으면 취소
+                    - Redis 캐싱으로 성능 최적화
+                    - 응답에 현재 좋아요 상태와 총 개수 포함
+                    """
     )
     @ApiResponses({
             @ApiResponse(
@@ -178,12 +172,12 @@ public class StoryUserController {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(
                                     value = """
-                    {
-                        "status": "STR005",
-                        "message": "이야기를 찾을 수 없습니다.",
-                        "data": null
-                    }
-                    """
+                                            {
+                                                "status": "STR005",
+                                                "message": "이야기를 찾을 수 없습니다.",
+                                                "data": null
+                                            }
+                                            """
                             )
                     )
             )
@@ -202,12 +196,12 @@ public class StoryUserController {
     @Operation(
             summary = "이야기 수정",
             description = """
-        작성한 이야기를 수정합니다.
-        - 작성자 본인만 수정 가능
-        - 제목, 내용, 컨셉, 이미지 수정 가능
-        - 이미지는 keepImageUrls로 유지할 이미지를 지정하고, files로 새 이미지 추가
-        - 최종 이미지는 최대 3개까지 가능
-        """
+                    작성한 이야기를 수정합니다.
+                    - 작성자 본인만 수정 가능
+                    - 제목, 내용, 컨셉, 이미지 수정 가능
+                    - 이미지는 keepImageUrls로 유지할 이미지를 지정하고, files로 새 이미지 추가
+                    - 최종 이미지는 최대 3개까지 가능
+                    """
     )
     @ApiResponses({
             @ApiResponse(
@@ -222,12 +216,12 @@ public class StoryUserController {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(
                                     value = """
-                    {
-                        "status": "STR006",
-                        "message": "이야기 작성자만 수정/삭제할 수 있습니다.",
-                        "data": null
-                    }
-                    """
+                                            {
+                                                "status": "STR006",
+                                                "message": "이야기 작성자만 수정/삭제할 수 있습니다.",
+                                                "data": null
+                                            }
+                                            """
                             )
                     )
             ),
@@ -238,12 +232,12 @@ public class StoryUserController {
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(
                                     value = """
-                    {
-                        "status": "STR005",
-                        "message": "이야기를 찾을 수 없습니다.",
-                        "data": null
-                    }
-                    """
+                                            {
+                                                "status": "STR005",
+                                                "message": "이야기를 찾을 수 없습니다.",
+                                                "data": null
+                                            }
+                                            """
                             )
                     )
             )
