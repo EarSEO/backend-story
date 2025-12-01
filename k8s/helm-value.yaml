@@ -9,3 +9,4 @@ env:
   OPENAI_TEMPERATURE: "1.2"
   OPENAI_TOP_P: "0.9"
   CORE_SERVER_URL: "http://backend-core:8080"
+  DISTANCE_PATH_TO_SPOT: "200"

@@ -30,10 +30,6 @@ public record CreateRequest(
     @DecimalMax(value = "133", message = "경도는 133 이하여야 합니다")
     @Schema(description = "경도 (longitude)", example = "126.9780", minimum = "124", maximum = "133", requiredMode = Schema.RequiredMode.REQUIRED)
     Double longitude,
-    @NotNull(message = "이야기 스팟 ID는 필수입니다")
-    @Positive(message = "이야기 스팟 ID는 양수여야 합니다")
-    @Schema(description = "이야기 스팟 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
-    Long storySpotId,
     @NotBlank(message = "제목은 필수입니다")
     @Size(min = 1, max = 30, message = "제목은 1자 이상 30자 이하여야 합니다")
     @Schema(description = "이야기 제목", example = "골목길 맛집", minLength = 1, maxLength = 30, requiredMode = Schema.RequiredMode.REQUIRED)

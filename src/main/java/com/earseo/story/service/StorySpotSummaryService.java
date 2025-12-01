@@ -41,10 +41,12 @@ public class StorySpotSummaryService {
     private int STORY_SUMMARY_LIMIT;
     @Value("${summary.story-summary.threshold}")
     private int STORY_SUMMARY_THRESHOLD;
+    @Value("${distance.path-to-spot}")
+    private int DISTANCE_PATH_TO_SPOT;
 
     private static final int SRID_WGS84 = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY =
-            new GeometryFactory(new PrecisionModel(), SRID_WGS84);
+        new GeometryFactory(new PrecisionModel(), SRID_WGS84);
     private static final Random SingletonRandom = new Random();
     private static final int INTERVAL_MINUTES = 3;
 
@@ -67,12 +69,12 @@ public class StorySpotSummaryService {
         // 이전 요약 대상 이야기 id
         // Map<StorySpotId, Map<StoryConcept, Set<storyId>>>
         Map<Long, Map<StoryConcept, Set<Long>>> lastSummarizedStoryIdSet =
-                storySpotSummaryJDBCRepository.findAllLastSummarizedStoryIdSet(hotSpotIds);
+            storySpotSummaryJDBCRepository.findAllLastSummarizedStoryIdSet(hotSpotIds);
 
         // 현재 요약 대상 이야기
         // Map<StorySpotId, Map<StoryConcept, Set<Story>>>
         Map<Long, Map<StoryConcept, Set<Story>>> currentSummarizedStoryIdSet =
-                storyJDBCRepository.findAllHotStorySummarizeTargetStory(hotSpotIds, STORY_SUMMARY_LIMIT);
+            storyJDBCRepository.findAllHotStorySummarizeTargetStory(hotSpotIds, STORY_SUMMARY_LIMIT);
 
         // 요약 정보를 새로 만들어야 하는 이야기
         Map<Long, Map<StoryConcept, Set<Story>>> shouldSummarizeStory = new HashMap<>();
@@ -80,22 +82,22 @@ public class StorySpotSummaryService {
 
         for (Long hotSpotId : hotSpotIds) {
             Map<StoryConcept, Set<Story>> currentStories =
-                    currentSummarizedStoryIdSet.getOrDefault(hotSpotId, Collections.emptyMap());
+                currentSummarizedStoryIdSet.getOrDefault(hotSpotId, Collections.emptyMap());
 
             for (StoryConcept storyConcept : StoryConcept.values()) {
                 Set<Story> stories = currentStories.get(storyConcept);
                 if (stories == null || stories.isEmpty()) continue;
                 Set<Long> prevStoryIds = lastSummarizedStoryIdSet
-                        .getOrDefault(hotSpotId, Collections.emptyMap())
-                        .getOrDefault(storyConcept, Collections.emptySet());
+                    .getOrDefault(hotSpotId, Collections.emptyMap())
+                    .getOrDefault(storyConcept, Collections.emptySet());
                 if (
-                        stories.size() < STORY_SUMMARY_THRESHOLD
-                                || stories.stream().map(Story::getId).collect(Collectors.toSet()).equals(prevStoryIds)
+                    stories.size() < STORY_SUMMARY_THRESHOLD
+                    || stories.stream().map(Story::getId).collect(Collectors.toSet()).equals(prevStoryIds)
                 ) continue;
                 shouldSummarizeStory
-                        .computeIfAbsent(hotSpotId, k -> new HashMap<>())
-                        .computeIfAbsent(storyConcept, k -> new HashSet<>())
-                        .addAll(stories);
+                    .computeIfAbsent(hotSpotId, k -> new HashMap<>())
+                    .computeIfAbsent(storyConcept, k -> new HashSet<>())
+                    .addAll(stories);
                 summarizeCnt++;
             }
         }
@@ -108,18 +110,18 @@ public class StorySpotSummaryService {
             for (Map.Entry<StoryConcept, Set<Story>> storyConceptEntry : storySpotEntry.getValue().entrySet()) {
                 for (Locale locale : Locale.values()) {
                     SpotSummaryResult spotSummaryResult = openAiService.generateSummaryWithAI(
-                            storyConceptEntry.getValue(),
-                            storyConceptEntry.getKey(),
-                            locale
+                        storyConceptEntry.getValue(),
+                        storyConceptEntry.getKey(),
+                        locale
                     );
                     SpotSummarySaveRequest spotSummarySaveRequest = SpotSummarySaveRequest
-                            .toDto(
-                                    spotSummaryResult,
-                                    storySpotEntry.getKey(),
-                                    storyConceptEntry.getKey(),
-                                    locale,
-                                    storyConceptEntry.getValue()
-                            );
+                        .toDto(
+                            spotSummaryResult,
+                            storySpotEntry.getKey(),
+                            storyConceptEntry.getKey(),
+                            locale,
+                            storyConceptEntry.getValue()
+                        );
                     spotSummarySaveRequests.add(spotSummarySaveRequest);
                 }
             }
@@ -127,7 +129,7 @@ public class StorySpotSummaryService {
 
         // 요약 저장
         long insertedSummaryCnt = storySpotSummaryJDBCRepository
-                .batchUpsert(spotSummarySaveRequests);
+            .batchUpsert(spotSummarySaveRequests);
 
         createDocentUrl();
 
@@ -138,16 +140,16 @@ public class StorySpotSummaryService {
     public void createDocentUrl() {
         //최근 수정된 요약 조회
         List<StorySpotSummary> storySpotSummaries = storySpotSummaryRepository.findAllByUpdatedAt(INTERVAL_MINUTES);
+        if (storySpotSummaries.isEmpty()) return;
         List<StoryDocentRequest> storyDocentRequests = storySpotSummaries.stream()
-                .map(
-                        item -> new StoryDocentRequest(
-                                item.getId(),
-                                item.getSummary(),
-                                item.getLocale().name()
-                        )
+            .map(
+                item -> new StoryDocentRequest(
+                    item.getId(),
+                    item.getSummary(),
+                    item.getLocale().name()
                 )
-                .toList();
-
+            )
+            .toList();
         List<StoryDocentResponse> storyDocentResponses = coreFeignClient.getStoryDocent(storyDocentRequests);
         for (int i = 0; i < storyDocentResponses.size(); i++) {
             StoryDocentResponse storyDocentResponse = storyDocentResponses.get(i);
@@ -157,19 +159,19 @@ public class StorySpotSummaryService {
 
     @Transactional(readOnly = true)
     public GetRouteListSpotResponse getPathsSpotList(GetRouteListSpotRequest request) {
-        Long meters = request.meters() != null ? request.meters() : 50L;
+        Integer meters = request.meters() != null ? request.meters() : DISTANCE_PATH_TO_SPOT;
 
         List<List<GetRouteSpotResponse>> spotList = request.paths().stream()
-                .map(path -> processPath(path, meters, request.storyConcept()))
-                .toList();
+            .map(path -> processPath(path, meters, request.storyConcept()))
+            .toList();
 
         return GetRouteListSpotResponse.toDto(spotList);
     }
 
     private List<GetRouteSpotResponse> processPath(
-            PathLineStringRequest pathRequest,
-            Long meters,
-            StoryConcept requestedConcept
+        PathLineStringRequest pathRequest,
+        Integer meters,
+        StoryConcept requestedConcept
     ) {
         // 유효성 검증
         if (pathRequest.lineString() == null || pathRequest.lineString().size() < 2 || pathRequest.amount() <= 0) {
@@ -181,18 +183,18 @@ public class StorySpotSummaryService {
 
         // 컨셉이 null이면 가공
         StoryConcept selectedConcept = requestedConcept != null
-                ? requestedConcept
-                : getRandomConcept();
+            ? requestedConcept
+            : getRandomConcept();
 
         // 한방 쿼리
         List<StorySpotWithSummaryProjection> spotsWithSummaries =
-                storySpotSummaryRepository.findSpotsNearPathWithSummaries(
-                        lineString,
-                        meters,
-                        Locale.KO.name(),
-                        selectedConcept.name(),
-                        pathRequest.amount()
-                );
+            storySpotSummaryRepository.findSpotsNearPathWithSummaries(
+                lineString,
+                meters,
+                Locale.KO.name(),
+                selectedConcept.name(),
+                pathRequest.amount()
+            );
 
         if (spotsWithSummaries.isEmpty()) {
             return List.of();
@@ -209,8 +211,8 @@ public class StorySpotSummaryService {
 
     private LineString buildJTSLineString(List<PointRequest> points) {
         Coordinate[] coordinates = points.stream()
-                .map(point -> new Coordinate(point.longitude(), point.latitude()))
-                .toArray(Coordinate[]::new);
+            .map(point -> new Coordinate(point.longitude(), point.latitude()))
+            .toArray(Coordinate[]::new);
 
         LineString lineString = GEOMETRY_FACTORY.createLineString(coordinates);
         lineString.setSRID(SRID_WGS84);

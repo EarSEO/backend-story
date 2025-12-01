@@ -5,6 +5,7 @@ import com.earseo.story.entity.Story;
 import com.earseo.story.entity.StoryConcept;
 import com.earseo.story.repository.StoryJdbcRepository;
 import com.earseo.story.repository.StorySpotSummaryJdbcRepository;
+import com.earseo.story.repository.StorySpotSummaryRepository;
 import com.earseo.story.service.OpenAiService.SpotSummaryResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,9 @@ class StorySpotSummaryServiceTest {
 
     @Mock
     private StorySpotSummaryJdbcRepository storySpotSummaryJDBCRepository;
+
+    @Mock
+    private StorySpotSummaryRepository storySpotSummaryRepository;
 
     @InjectMocks
     private StorySpotSummaryService storySpotSummaryService;
@@ -163,6 +167,8 @@ class StorySpotSummaryServiceTest {
             .willReturn(mockResult);
         given(storySpotSummaryJDBCRepository.batchUpsert(anyList()))
             .willReturn(2L);
+        given(storySpotSummaryRepository.findAllByUpdatedAt(anyInt()))
+            .willReturn(List.of());
 
         // when
         storySpotSummaryService.createSummariesScheduled();
