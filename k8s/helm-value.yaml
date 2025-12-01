@@ -8,3 +8,4 @@ env:
   OPENAI_MODEL: "gpt-4o-mini"
   OPENAI_TEMPERATURE: "1.2"
   OPENAI_TOP_P: "0.9"
+  CORE_SERVER_URL: "http://backend-core:8080"

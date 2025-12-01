@@ -40,6 +40,8 @@ public class StorySpotSummary {
     @Column(name = "story_concept")
     private StoryConcept storyConcept;
     private String docentUrl;
+    @Column(columnDefinition = "text")
+    private String docentScript;
     @Enumerated(EnumType.STRING)
     @Column(name = "locale")
     private Locale locale;
@@ -52,4 +54,10 @@ public class StorySpotSummary {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    public StorySpotSummary updateDocent(String docentUrl, String docentScript){
+        this.docentUrl = docentUrl;
+        this.docentScript = docentScript;
+        return this;
+    }
 }

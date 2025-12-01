@@ -3,6 +3,12 @@ spring:
     name: backend-story
   profiles:
     default: local
+  cloud:
+    openfeign:
+      client:
+        config:
+          CoreFeignClient:
+            url: ${CORE_SERVICE_URL:http://localhost:8080}
 server:
   port: 8080
 springdoc:
