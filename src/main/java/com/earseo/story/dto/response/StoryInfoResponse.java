@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record StoryInfoResponse(
+    @Schema(description = "이야기 ID", example = "123")
+    Long storyId,
     @Schema(description = "이야기 작성자")
     StoryAuthorResponse storyAuthor,
     @Schema(description = "이야기 제목", example = "경복궁의 맛집")
@@ -30,6 +32,7 @@ public record StoryInfoResponse(
 ) {
     public static StoryInfoResponse toDto(Story story, List<String> imageUrls) {
         return new StoryInfoResponse(
+            story.getId(),
             StoryAuthorResponse.toDto(story.getStoryAuthor()),
             story.getStoryTitle().getTitle(),
             story.getContent(),

@@ -49,12 +49,13 @@ public class StoryService {
     private final StoryTitleRepository storyTitleRepository;
     private final SpotTitleAggregateRepository spotTitleAggregateRepository;
     private final StorySpotSummaryRepository storySpotSummaryRepository;
+    private final StoryLikeRepository storyLikeRepository;
     private final LikeService likeService;
 
     @Transactional
-    public CreateResponse createStory(Long memberId, CreateRequest body) {
+    public CreateResponse createStory(Long memberId, CreateRequest body, List<MultipartFile> images) {
         // 사용자 검증
-//        if (!memberId.equals(body.authorId())) throw new BaseException(ITS_NOT_YOU);
+        if (!memberId.equals(body.authorId())) throw new BaseException(ITS_NOT_YOU);
         StoryAuthor storyAuthor = storyAuthorRepository.findById(body.authorId())
                 .orElseGet(() ->
                         storyAuthorRepository.save(
@@ -106,6 +107,11 @@ public class StoryService {
                 .build());
         // 제목 집계 테이블 최신화
         spotTitleAggregateRepository.incrementOrCreate(geohashedSpot.getId(), storyTitle.getId());
+
+        if (images != null && !images.isEmpty()) {
+            List<StoryImage> storyImages = getImageList(images, spotGeoHash, story);
+            storyImageRepository.saveAll(storyImages);
+        }
 
         return CreateResponse.toDto(story);
     }
@@ -288,6 +294,54 @@ public class StoryService {
         boolean isLiked = likeService.toggleLike(storyId, memberId);
         Long likeCount = likeService.getLikeCount(storyId);
         return new ToggleLikeResponse(isLiked, likeCount);
+    }
+
+    @Transactional(readOnly = true)
+    public MyStoryListResponse getLikedStories(Long memberId, Long lastStoryLikeId, int size) {
+        Pageable pageable = PageRequest.of(0, size + 1);
+
+        List<StoryLike> storyLikes;
+        if (lastStoryLikeId == null) {
+            storyLikes = storyLikeRepository.findByMemberIdOrderByIdDesc(memberId, pageable);
+        } else {
+            storyLikes = storyLikeRepository.findByMemberIdAndIdLessThanOrderByIdDesc(memberId, lastStoryLikeId, pageable);
+        }
+
+        boolean hasNext = storyLikes.size() > size;
+        if (hasNext) {
+            storyLikes = storyLikes.subList(0, size);
+        }
+
+        List<Story> stories = storyLikes.stream()
+                .map(StoryLike::getStory)
+                .toList();
+
+        // 이미지 조회
+        List<Long> storyIds = stories.stream()
+                .map(Story::getId)
+                .toList();
+
+        final Map<Long, List<String>> imageUrlMap;
+        if (!storyIds.isEmpty()) {
+            List<StoryImage> storyImages = storyImageRepository.findByStoryIdIn(storyIds);
+            imageUrlMap = storyImages.stream()
+                    .collect(Collectors.groupingBy(
+                            si -> si.getStory().getId(),
+                            Collectors.mapping(StoryImage::getImageUrl, Collectors.toList())
+                    ));
+        } else {
+            imageUrlMap = Map.of();
+        }
+
+        Long lastId = storyLikes.isEmpty() ? null : storyLikes.get(storyLikes.size() - 1).getId();
+
+        return new MyStoryListResponse(
+                stories.stream()
+                        .map(story -> MyStoryResponse.toDto(story, imageUrlMap.getOrDefault(story.getId(), List.of())))
+                        .toList(),
+                hasNext,
+                lastId
+        );
     }
 
     @Transactional

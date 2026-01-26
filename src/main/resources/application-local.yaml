@@ -74,6 +74,6 @@ cloud:
     region:
       static: ap-northeast-2
     s3:
-      bucket: ${AWS_S#_BUCKET:example-bucket}
+      bucket: ${AWS_S3_BUCKET:example-bucket}
     cloudfront:
       domain: ${AWS_CLOUDFRONT_DOMAIN:cdn.example.com}

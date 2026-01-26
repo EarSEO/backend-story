@@ -11,6 +11,9 @@ public record MyStoryResponse(
         @Schema(description = "이야기 ID", example = "1")
         Long storyId,
 
+        @Schema(description = "작성자 닉네임", example = "카피바라")
+        String nickname,
+
         @Schema(description = "이야기 제목", example = "경복궁 근처 맛집")
         String title,
 
@@ -44,6 +47,7 @@ public record MyStoryResponse(
     public static MyStoryResponse toDto(Story story, List<String> imageUrls) {
         return new MyStoryResponse(
                 story.getId(),
+                story.getStoryAuthor().getNickname(),
                 story.getStoryTitle().getTitle(),
                 story.getContent(),
                 story.getStoryConcept(),
