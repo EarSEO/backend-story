@@ -75,11 +75,17 @@ public class LikeService {
         // Redis에서 먼저 조회
         Object cachedCount = stringTemplate.opsForValue().get(countKey);
         if (cachedCount != null) {
-            // Integer 또는 String 타입 모두 처리
+            Long count;
             if (cachedCount instanceof String) {
-                return Long.parseLong((String) cachedCount);
+                count = Long.parseLong((String) cachedCount);
             } else if (cachedCount instanceof Number) {
-                return ((Number) cachedCount).longValue();
+                count = ((Number) cachedCount).longValue();
+            } else {
+                count = null;
+            }
+
+            if (count != null) {
+                return count;
             }
         }
 
