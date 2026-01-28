@@ -1,5 +1,5 @@
 image:
-  tag: v0.1.10
+  tag: v0.1.11
 env:
   HOT_SPOT_THRESHOLD: "30"
   STORY_SUMMARY_LIMIT: "3"
