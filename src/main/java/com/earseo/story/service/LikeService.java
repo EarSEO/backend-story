@@ -8,6 +8,7 @@ import com.earseo.story.repository.StoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +27,8 @@ public class LikeService {
 
     private final StoryRepository storyRepository;
     private final StoryLikeRepository storyLikeRepository;
-    private final RedisTemplate<String, String> stringTemplate;
+//    private final RedisTemplate<String, String> stringTemplate;
+    private final StringRedisTemplate stringTemplate;
 
     @Transactional
     public boolean toggleLike(Long storyId, Long memberId) {
@@ -35,6 +37,16 @@ public class LikeService {
 
         String likeKey = LIKE_KEY_PREFIX + storyId + ":" + memberId;
         String countKey = LIKE_COUNT_KEY_PREFIX + storyId;
+
+        // Redis에 countKey가 없으면 DB 값으로 초기화
+        if (Boolean.FALSE.equals(stringTemplate.hasKey(countKey))) {
+            stringTemplate.opsForValue().set(
+                    countKey,
+                    String.valueOf(story.getLikeCount()),
+                    CACHE_TTL_HOURS,
+                    TimeUnit.HOURS
+            );
+        }
 
         // 좋아요 존재 여부 확인
         boolean isLiked = storyLikeRepository.existsByStoryIdAndMemberId(storyId, memberId);
